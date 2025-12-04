@@ -61,7 +61,12 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
     setShowResult(true);
 
     try {
-      const result = analyzeGeokguk(sajuInfo);
+      // 시간 모름 여부 확인
+      const isHourUnknown =
+        sajuInfo.pillars.hour.cheonGan.char === "-" ||
+        sajuInfo.pillars.hour.jiJi.char === "-";
+
+      const result = analyzeGeokguk(sajuInfo, isHourUnknown);
       setGeokgukResult(result);
     } catch (e) {
       setGeokgukResult({
@@ -87,70 +92,142 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
 
           <div className="max-w-4xl mx-auto space-y-4 text-left">
             <div className="bg-white/70 p-5 rounded-xl border border-indigo-200">
-              <p className="text-lg md:text-xl text-gray-700 leading-relaxed font-medium">
-                <strong className="text-indigo-700">격국(格局)</strong>은 "내가
-                이 세상에서 어떤 도구를 써서 살아가야 가장 성공하기 쉬운지"를
-                보여주는 <strong className="text-indigo-700">사회적 DNA</strong>
+              <p className="text-base font-normal leading-relaxed text-gray-700 mb-4">
+                <strong className="text-indigo-700">격국(格局)</strong>은
+                인생이라는 전쟁터에서 승리하기 위해 지급받은{" "}
+                <strong className="text-indigo-700">'단 하나의 필살기'</strong>
                 입니다.
+              </p>
+
+              <p className="text-base font-normal leading-relaxed text-gray-700 mb-4">
+                누구에게나 세상을 살아가는 도구가 주어집니다. 누군가는{" "}
+                <strong className="text-indigo-700">'말(언변)'</strong>이
+                무기이고, 누군가는{" "}
+                <strong className="text-indigo-700">'돈(재력)'</strong>이
+                무기이며, 누군가는{" "}
+                <strong className="text-indigo-700">'자격증(기술)'</strong>이
+                무기입니다.
+              </p>
+
+              <p className="text-base font-normal leading-relaxed text-gray-700">
+                남의 무기를 부러워하면 백전백패하지만, 내 격국에 맞는 무기를
+                갈고닦으면 반드시 정상에 오릅니다. 격국 분석은 당신이 손에 쥔 그
+                무기가 무엇인지 확인하는 가장 정교한 인생 전략서입니다.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                <h5 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                  <span className="text-xl">📌</span> 내격(內格)
-                </h5>
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  일반적인 격국으로, 월지(月支)를 기준으로 판단합니다. 정관격,
-                  편관격, 정재격, 편재격, 식신격, 상관격, 정인격, 편인격,
-                  건록격, 양인격 등이 있습니다.
-                </p>
-              </div>
-
-              <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
-                <h5 className="font-bold text-purple-800 mb-2 flex items-center gap-2">
-                  <span className="text-xl">⭐</span> 외격(外格, 특수격)
-                </h5>
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  특수한 조건에서 성립하는 격국입니다. 전왕격, 화기격, 종격 등이
-                  있으며, 내격보다 더 강력한 기운을 가집니다.
-                </p>
-              </div>
-            </div>
-
             <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
-              <h5 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
+              <h5 className="font-bold text-yellow-800 mb-4 flex items-center gap-2">
                 <span className="text-xl">💡</span> 격국의 의미
               </h5>
-              <ul className="text-gray-700 text-sm space-y-2 list-disc list-inside">
-                <li>
-                  <strong>정관격</strong>: 바른 관리, 정당한 권력 → 공무원,
-                  정치인, 관리직
-                </li>
-                <li>
-                  <strong>편관격(칠살격)</strong>: 무력, 강압적 권력 → 군인,
-                  경찰, 무술인
-                </li>
-                <li>
-                  <strong>정재격</strong>: 정당한 재물, 노동소득 → 직장인,
-                  전문직
-                </li>
-                <li>
-                  <strong>편재격</strong>: 유동적 재물, 투기 → 사업가, 투자자
-                </li>
-                <li>
-                  <strong>식신격</strong>: 재능, 표현 → 예술가, 요리사, 서비스업
-                </li>
-                <li>
-                  <strong>상관격</strong>: 비판, 창조 → 작가, 배우, 혁신가
-                </li>
-                <li>
-                  <strong>정인격</strong>: 정통 학문 → 교수, 교사, 학자
-                </li>
-                <li>
-                  <strong>편인격</strong>: 비주류 지식 → 연구원, 기술자
-                </li>
-              </ul>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      식신격
+                    </strong>
+                    : <strong className="text-indigo-600">재능, 표현</strong> →
+                    예술가, 요리사, 서비스업
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      상관격
+                    </strong>
+                    : <strong className="text-indigo-600">비판, 창조</strong> →
+                    작가, 배우, 혁신가
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      정재격
+                    </strong>
+                    :{" "}
+                    <strong className="text-indigo-600">
+                      정당한 재물, 노동소득
+                    </strong>{" "}
+                    → 직장인, 전문직
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      편재격
+                    </strong>
+                    :{" "}
+                    <strong className="text-indigo-600">
+                      유동적 재물, 투기
+                    </strong>{" "}
+                    → 사업가, 투자자
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      정관격
+                    </strong>
+                    :{" "}
+                    <strong className="text-indigo-600">
+                      바른 관리, 정당한 권력
+                    </strong>{" "}
+                    → 공무원, 정치인, 관리직
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      편관격(칠살격)
+                    </strong>
+                    :{" "}
+                    <strong className="text-indigo-600">
+                      무력, 강압적 권력
+                    </strong>{" "}
+                    → 군인, 경찰, 무술인
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      정인격
+                    </strong>
+                    : <strong className="text-indigo-600">정통 학문</strong> →
+                    교수, 교사, 학자
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      편인격
+                    </strong>
+                    : <strong className="text-indigo-600">비주류 지식</strong> →
+                    연구원, 기술자
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      양인격
+                    </strong>
+                    :{" "}
+                    <strong className="text-indigo-600">
+                      칠살을 다루는 카리스마
+                    </strong>
+                  </p>
+                </div>
+                <div className="bg-white/70 p-3 rounded-lg border border-yellow-300">
+                  <p className="text-sm font-normal text-gray-700">
+                    <strong className="text-base font-bold text-indigo-700">
+                      건록격,월겁격
+                    </strong>
+                    :{" "}
+                    <strong className="text-indigo-600">
+                      강한 자신감으로 자수성가
+                    </strong>
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
