@@ -86,3 +86,37 @@ export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
 }
+
+// ============================================
+// 격국(格局) 관련 타입
+// ============================================
+
+/**
+ * 격국 판단 결과
+ */
+export interface GeokgukResult {
+  판단가능: boolean;
+  격국?: {
+    격명칭: string;
+    격용신: string; // 격을 이루는 천간
+    격분류: '내격' | '외격';
+    월지: string;
+    용신?: {
+      천간: string;
+      십성: string;
+      설명: string;
+    };
+    성격상태: '성격' | '파격';
+    강도: '강' | '중' | '약';
+    신뢰도: number; // 0-100
+    판단근거: {
+      방법: string;
+      투출천간?: string[];
+      일간체크?: string;
+      합국여부?: string | null;
+    };
+    해석: string;
+  };
+  메시지?: string;
+  이유?: string[];
+}

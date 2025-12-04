@@ -15,6 +15,7 @@ import { sibsinDescriptions } from "../utils/sibsinDescriptions";
 import { sibsinPositionDescriptions } from "../utils/sibsinPositionDescriptions";
 import { InteractionsDisplay } from "./InteractionsDisplay";
 import { SinsalDisplay } from "./SinsalDisplay";
+import { GyeokgukDisplay } from "./GyeokgukDisplay";
 import {
   DiagnosisIcon,
   PrescriptionIcon,
@@ -1247,6 +1248,9 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({
 
         {/* 십신 위치별 해석 섹션 (월령과 일지) */}
         <SibsinPositionDisplay sajuInfo={sajuData} />
+
+        {/* 격국(格局) 설명 및 확인 섹션 */}
+        <GyeokgukDisplay sajuInfo={sajuData} />
 
         <DaewoonDisplay sajuInfo={sajuData} onShowDaewoon={setShowDaewoon} showDaewoon={showDaewoon} />
 
