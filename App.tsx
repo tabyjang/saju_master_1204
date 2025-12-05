@@ -230,7 +230,7 @@ const App: React.FC = () => {
             </main>
             <footer className="text-center mt-16 text-sm text-gray-500">
                 <p>본 분석을 통해 도움이 되길 진심으로 기원합니다. </p>
-                 <p>&copy; {new Date().getFullYear()} AI Saju Analysis. All rights reserved.</p>
+                 <p>&copy; {new Date().getFullYear()} selfsaju.co.kr. All rights reserved.</p>
             </footer>
         </div>
     );

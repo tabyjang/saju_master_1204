@@ -560,12 +560,482 @@ const SewoonDisplay: React.FC<{ sajuInfo: SajuInfo }> = ({ sajuInfo }) => {
   );
 };
 
+// 오행 다이어그램 컴포넌트
+const OhaengDiagram: React.FC<{
+  ohaengCounts: Record<Ohaeng, number>;
+  ilganOhaeng: Ohaeng | undefined;
+}> = ({ ohaengCounts, ilganOhaeng }) => {
+  // 오행 실제 색상 값 (SVG용)
+  const ohaengColors: Record<Ohaeng, string> = {
+    wood: "#00B050", // 녹색
+    fire: "#FF0000", // 빨간색
+    earth: "#FEC100", // 노란색
+    metal: "#cbd5e1", // slate-200
+    water: "#000000", // 검은색
+  };
+
+  // 오행 숫자에 따른 원 크기 계산 함수
+  const getCircleRadius = (count: number): number => {
+    const baseRadius = 6; // 기준 크기 (숫자 1)
+    if (count === 0) {
+      return baseRadius * 0.5; // 절반 크기 (원 크기는 그대로)
+    } else if (count === 1) {
+      return baseRadius; // 기준 크기
+    } else if (count === 2) {
+      return baseRadius * 1.4; // 1.4배
+    } else if (count === 3) {
+      return baseRadius * 1.8; // 1.8배
+    } else {
+      return baseRadius * 2.2; // 2.2배 (4 이상)
+    }
+  };
+
+  // 오행 숫자에 따른 폰트 크기 계산
+  const getFontSize = (count: number): string => {
+    if (count === 0) {
+      return "5px"; // 글씨만 더 작게
+    } else if (count === 1) {
+      return "8px"; // 그대로 유지
+    } else if (count === 2) {
+      return "10px"; // 1.4배에 맞춰 조정
+    } else if (count === 3) {
+      return "12px"; // 1.8배에 맞춰 조정
+    } else {
+      return "14px"; // 2.2배에 맞춰 조정 (4 이상)
+    }
+  };
+
+  // 오행 위치 (오각형 배치) - 더 넓은 간격으로 조정
+  const centerX = 50;
+  const centerY = 50;
+  const radius = 35; // 반지름 증가
+
+  // 기본 오행 순서: 목(0) → 화(1) → 토(2) → 금(3) → 수(4)
+  const ohaengOrder: Ohaeng[] = ["wood", "fire", "earth", "metal", "water"];
+  const ohaengKoreans: Record<Ohaeng, string> = {
+    wood: "목",
+    fire: "화",
+    earth: "토",
+    metal: "금",
+    water: "수",
+  };
+
+  // 일간 오행에 따라 회전할 인덱스 계산
+  const getRotationIndex = (): number => {
+    if (!ilganOhaeng) return 0;
+    const index = ohaengOrder.indexOf(ilganOhaeng);
+    return index >= 0 ? index : 0;
+  };
+
+  const rotationIndex = getRotationIndex();
+
+  // 회전된 오행 순서 생성 (일간 오행이 상단에 오도록)
+  const rotatedOhaengOrder = [
+    ...ohaengOrder.slice(rotationIndex),
+    ...ohaengOrder.slice(0, rotationIndex),
+  ];
+
+  // 일간 오행에 따른 십신 매핑 (상생 순서: 비겁→식상→재성→관성→인성)
+  const getSibsinName = (ohaeng: Ohaeng): string => {
+    if (!ilganOhaeng) return "";
+    const ilganIndex = ohaengOrder.indexOf(ilganOhaeng);
+    const targetIndex = ohaengOrder.indexOf(ohaeng);
+    if (ilganIndex < 0 || targetIndex < 0) return "";
+
+    // 회전된 순서에서의 인덱스
+    const rotatedIndex = (targetIndex - ilganIndex + 5) % 5;
+
+    const sibsinNames = ["일간/비겁", "식상", "재성", "관성", "인성"];
+    return sibsinNames[rotatedIndex];
+  };
+
+  // 오각형 위치 계산 (5개 위치)
+  const basePositions = [
+    { x: centerX, y: centerY - radius }, // 상단 (0)
+    {
+      x: centerX + radius * 0.951,
+      y: centerY - radius * 0.309,
+    }, // 우상단 (1)
+    {
+      x: centerX + radius * 0.588,
+      y: centerY + radius * 0.809,
+    }, // 우하단 (2)
+    {
+      x: centerX - radius * 0.588,
+      y: centerY + radius * 0.809,
+    }, // 좌하단 (3)
+    {
+      x: centerX - radius * 0.951,
+      y: centerY - radius * 0.309,
+    }, // 좌상단 (4)
+  ];
+
+  // 회전된 순서에 따라 오행 위치 매핑
+  const ohaengPositions: Array<{
+    ohaeng: Ohaeng;
+    korean: string;
+    x: number;
+    y: number;
+  }> = rotatedOhaengOrder.map((ohaeng, idx) => ({
+    ohaeng,
+    korean: ohaengKoreans[ohaeng],
+    x: basePositions[idx].x,
+    y: basePositions[idx].y,
+  }));
+
+  // 상생 관계 (외곽 오각형): 회전된 순서에 맞춰 조정
+  // 기본: 0→1→2→3→4→0 (목→화→토→금→수→목)
+  const sangsaengPaths = [
+    { from: 0, to: 1 }, // 첫번째→두번째
+    { from: 1, to: 2 }, // 두번째→세번째
+    { from: 2, to: 3 }, // 세번째→네번째
+    { from: 3, to: 4 }, // 네번째→다섯번째
+    { from: 4, to: 0 }, // 다섯번째→첫번째
+  ];
+
+  // 상극 관계 (내부 별): 회전된 순서에 맞춰 조정
+  // 기본: 0→2, 1→3, 2→4, 3→0, 4→1
+  const sanggeukPaths = [
+    { from: 0, to: 2 }, // 첫번째→세번째
+    { from: 1, to: 3 }, // 두번째→네번째
+    { from: 2, to: 4 }, // 세번째→다섯번째
+    { from: 3, to: 0 }, // 네번째→첫번째
+    { from: 4, to: 1 }, // 다섯번째→두번째
+  ];
+
+  // 선 두께 조정 (더 얇게)
+  const sangsaengStrokeWidth = 0.8; // 더 얇게
+  const sanggeukStrokeWidth = 0.7; // 더 얇게
+  const borderColor = "#1f2937"; // gray-800 색상
+  const borderWidth = 0.8; // 테두리 두께 (더 얇게)
+
+  return (
+    <div className="w-full max-w-md mx-auto" style={{ marginTop: "16px" }}>
+      <svg
+        viewBox="0 0 100 100"
+        className="w-full h-auto"
+        style={{ maxHeight: "400px" }}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <marker
+            id="arrowhead-sangsaeng"
+            markerWidth="6"
+            markerHeight="6"
+            refX="5.5"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <polygon points="0 0, 6 3, 0 6" fill="#000" />
+          </marker>
+          <marker
+            id="arrowhead-sanggeuk"
+            markerWidth="5"
+            markerHeight="5"
+            refX="4.5"
+            refY="2.5"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <polygon points="0 0, 5 2.5, 0 5" fill="#666" />
+          </marker>
+        </defs>
+
+        {/* 상생 관계 (외곽 오각형) - 얇은 실선 */}
+        {sangsaengPaths.map((path, idx) => {
+          const from = ohaengPositions[path.from];
+          const to = ohaengPositions[path.to];
+          // 원의 가장자리에서 시작하도록 조정 (각 원의 크기에 맞춰)
+          const fromRadius = getCircleRadius(ohaengCounts[from.ohaeng]);
+          const toRadius = getCircleRadius(ohaengCounts[to.ohaeng]);
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const offsetXFrom = (dx / dist) * fromRadius;
+          const offsetYFrom = (dy / dist) * fromRadius;
+          const offsetXTo = (dx / dist) * toRadius;
+          const offsetYTo = (dy / dist) * toRadius;
+
+          return (
+            <line
+              key={`sangsaeng-${idx}`}
+              x1={from.x + offsetXFrom}
+              y1={from.y + offsetYFrom}
+              x2={to.x - offsetXTo}
+              y2={to.y - offsetYTo}
+              stroke="#000"
+              strokeWidth={sangsaengStrokeWidth}
+              markerEnd="url(#arrowhead-sangsaeng)"
+            />
+          );
+        })}
+
+        {/* 상극 관계 (내부 별) - 얇은 점선 */}
+        {sanggeukPaths.map((path, idx) => {
+          const from = ohaengPositions[path.from];
+          const to = ohaengPositions[path.to];
+          // 원의 가장자리에서 시작하도록 조정 (각 원의 크기에 맞춰)
+          const fromRadius = getCircleRadius(ohaengCounts[from.ohaeng]);
+          const toRadius = getCircleRadius(ohaengCounts[to.ohaeng]);
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const offsetXFrom = (dx / dist) * fromRadius;
+          const offsetYFrom = (dy / dist) * fromRadius;
+          const offsetXTo = (dx / dist) * toRadius;
+          const offsetYTo = (dy / dist) * toRadius;
+
+          return (
+            <line
+              key={`sanggeuk-${idx}`}
+              x1={from.x + offsetXFrom}
+              y1={from.y + offsetYFrom}
+              x2={to.x - offsetXTo}
+              y2={to.y - offsetYTo}
+              stroke="#666"
+              strokeWidth={sanggeukStrokeWidth}
+              strokeDasharray="2,2"
+              markerEnd="url(#arrowhead-sanggeuk)"
+            />
+          );
+        })}
+
+        {/* 오행 원들 - 사주 원국과 동일한 스타일, 숫자에 따라 크기 조정 */}
+        {ohaengPositions.map((pos, idx) => {
+          const color = ohaengColors[pos.ohaeng];
+          const count = ohaengCounts[pos.ohaeng];
+          const radius = getCircleRadius(count);
+          const fontSize = getFontSize(count);
+          const sibsinName = getSibsinName(pos.ohaeng);
+
+          // 원의 위치에서 십신 텍스트 위치 계산 (오른쪽으로 돌아가면서)
+          // 각 위치에 맞는 오프셋 계산
+          const textOffsets = [
+            { x: 0, y: -radius - 18 }, // 상단: 위쪽 (일간/비겁용, 3줄 공간 확보)
+            { x: radius + 4, y: -radius * 0.5 }, // 우상단: 오른쪽, 위쪽으로, 안쪽으로
+            { x: radius + 8, y: radius * 0.8 }, // 우하단: 오른쪽
+            { x: -radius - 8, y: radius * 0.8 }, // 좌하단: 왼쪽
+            { x: -radius - 4, y: -radius * 0.5 }, // 좌상단: 왼쪽, 위쪽으로, 안쪽으로
+          ];
+
+          const textOffset = textOffsets[idx];
+          const isIlgan = idx === 0; // 첫 번째 원이 일간/비겁
+
+          // 모든 오행은 흰색 텍스트 사용 (사주 원국과 동일)
+          return (
+            <g key={pos.ohaeng}>
+              <circle
+                cx={pos.x}
+                cy={pos.y}
+                r={radius}
+                fill={color}
+                stroke={borderColor}
+                strokeWidth={borderWidth}
+              />
+              <text
+                x={pos.x}
+                y={pos.y + 0.5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#ffffff"
+                style={{
+                  fontSize: fontSize,
+                  fontWeight: "bold",
+                  fontFamily: "Arial, sans-serif",
+                }}
+              >
+                {pos.korean}
+              </text>
+              {/* 십신 이름 표시 (일간/비겁은 제외) */}
+              {!isIlgan && (
+                <text
+                  x={pos.x + textOffset.x}
+                  y={pos.y + textOffset.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#333"
+                  style={{
+                    fontSize: "6px",
+                    fontWeight: "semibold",
+                    fontFamily: "Arial, sans-serif",
+                  }}
+                >
+                  {sibsinName}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="mt-4 text-center">
+        <h5 className="text-base font-bold text-gray-800">
+          오행 상생·상극 관계
+        </h5>
+      </div>
+    </div>
+  );
+};
+
+const OhaengEnergyDisplay: React.FC<{
+  ilganChar: string;
+  sajuInfo: SajuInfo;
+}> = ({ ilganChar, sajuInfo }) => {
+  const ganInfo = earthlyBranchGanInfo[ilganChar];
+  const ilganOhaeng = ganInfo?.ohaeng;
+  const { pillars } = sajuInfo;
+
+  // 오행 숫자 계산 (사주 원국과 동일한 로직)
+  const ohaengCounts = useMemo(() => {
+    const counts: Record<Ohaeng, number> = {
+      wood: 0,
+      fire: 0,
+      earth: 0,
+      metal: 0,
+      water: 0,
+    };
+    // 시주가 없을 경우(시간 모름) 시주를 제외하고 계산
+    const isHourUnknown =
+      pillars.hour.cheonGan.char === "-" || pillars.hour.jiJi.char === "-";
+
+    Object.entries(pillars).forEach(([key, pillar]: [string, Pillar]) => {
+      // 시주가 없으면 제외
+      if (key === "hour" && isHourUnknown) {
+        return;
+      }
+      counts[pillar.cheonGan.ohaeng]++;
+      counts[pillar.jiJi.ohaeng]++;
+    });
+    return counts;
+  }, [pillars]);
+
+  // 오행 한글명과 설명
+  const ohaengInfo: Record<
+    Ohaeng,
+    { name: string; korean: string; description: string; emoji: string }
+  > = {
+    wood: {
+      name: "wood",
+      korean: "木 (목)",
+      description: "성장과 발전의 기운",
+      emoji: "🌳",
+    },
+    fire: {
+      name: "fire",
+      korean: "火 (화)",
+      description: "열정과 활동의 기운",
+      emoji: "🔥",
+    },
+    earth: {
+      name: "earth",
+      korean: "土 (토)",
+      description: "안정과 수렴의 기운",
+      emoji: "⛰️",
+    },
+    metal: {
+      name: "metal",
+      korean: "金 (금)",
+      description: "정리와 완성의 기운",
+      emoji: "⚙️",
+    },
+    water: {
+      name: "water",
+      korean: "水 (수)",
+      description: "유동과 지혜의 기운",
+      emoji: "💧",
+    },
+  };
+
+  // 일간의 오행 색상
+  const ilganColor = ilganOhaeng
+    ? ohaengColorMap[ilganOhaeng]
+    : {
+        bg: "bg-gray-200",
+        text: "text-gray-800",
+        border: "border-gray-300",
+      };
+
+  return (
+    <div className="mt-8">
+      <div className="p-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-2xl border-2 border-indigo-200 shadow-lg animate-fade-in glass-card">
+        <div className="text-center mb-6">
+          <h3 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent mb-4">
+            오행의 기운
+          </h3>
+        </div>
+
+        <div className="bg-white/80 p-6 rounded-xl border-2 border-indigo-200 shadow-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 왼쪽: 오행 다이어그램 */}
+            <div
+              className="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200"
+              style={{
+                padding: "calc(1.5rem - 2px)",
+                paddingLeft: "calc(1.5rem + 20px - 2px)",
+                paddingRight: "calc(1.5rem + 20px - 2px)",
+              }}
+            >
+              <h4 className="text-xl font-bold text-gray-800 mb-4 text-center">
+                일간/비겁
+              </h4>
+              <div className="flex items-center justify-center">
+                <OhaengDiagram
+                  ohaengCounts={ohaengCounts}
+                  ilganOhaeng={ilganOhaeng}
+                />
+              </div>
+            </div>
+
+            {/* 오른쪽: 오행 설명 */}
+            <div
+              className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-200"
+              style={{
+                padding: "calc(1.5rem - 10px)",
+              }}
+            >
+              <h4 className="text-xl font-bold text-indigo-800 mb-4 text-center">
+                오행의 의미
+              </h4>
+              <div className="space-y-4 text-base font-normal leading-relaxed text-gray-700">
+                {(Object.keys(ohaengInfo) as Ohaeng[]).map((ohaeng) => {
+                  const info = ohaengInfo[ohaeng];
+                  const color = ohaengColorMap[ohaeng];
+                  const count = ohaengCounts[ohaeng];
+
+                  return (
+                    <div key={ohaeng} className="flex items-start gap-3">
+                      <div
+                        className={`flex-shrink-0 w-10 h-10 flex items-center justify-center text-lg font-bold rounded-lg shadow-md ${
+                          color.bg
+                        } ${color.text} ${color.border ?? ""}`}
+                      >
+                        {info.korean.split(" ")[0]}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 mb-1">
+                          {info.korean}{" "}
+                          <span className="text-indigo-600 font-bold">
+                            {count}
+                          </span>{" "}
+                          - {info.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const IlganPersonalityDisplay: React.FC<{ ilganChar: string }> = ({
   ilganChar,
 }) => {
   const [showInfo, setShowInfo] = useState(false);
-  const [typedText, setTypedText] = useState("");
-  const [showButton, setShowButton] = useState(false);
   const data = ilganDescriptions[ilganChar];
 
   // 일간 오행 정보 가져오기
@@ -579,36 +1049,6 @@ const IlganPersonalityDisplay: React.FC<{ ilganChar: string }> = ({
         border: "border border-gray-200",
       };
 
-  const fullText =
-    "사주 팔자는 네 개의 기둥으로 이루어져 있습니다. 年柱(년주)는 조상의 기운과 뿌리를, 月柱(월주)는 부모와 사회의 영향을, 日柱(일주)는 바로 나 자신의 본질을, 時柱(시주)는 자식과 내 미래의 방향을 담고 있습니다. 그 중심에 나를 나타내는 日干(일간)이 있습니다.";
-
-  React.useEffect(() => {
-    if (showInfo) return;
-
-    let index = 0;
-    let isMounted = true;
-
-    const typingInterval = setInterval(() => {
-      if (!isMounted) {
-        clearInterval(typingInterval);
-        return;
-      }
-
-      if (index <= fullText.length) {
-        setTypedText(fullText.slice(0, index));
-        index++;
-      } else {
-        clearInterval(typingInterval);
-        setShowButton(true);
-      }
-    }, 50);
-
-    return () => {
-      isMounted = false;
-      clearInterval(typingInterval);
-    };
-  }, [fullText, showInfo]);
-
   if (!data) return null;
 
   return (
@@ -621,16 +1061,36 @@ const IlganPersonalityDisplay: React.FC<{ ilganChar: string }> = ({
           <h4 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-500 bg-clip-text text-transparent mb-5">
             일간(日干) - 나의 본질
           </h4>
-          <div className="min-h-[160px] flex items-center justify-center">
-            <p className="text-lg md:text-xl text-gray-700 leading-relaxed font-medium max-w-3xl mx-auto">
-              {typedText}
-              {typedText.length < fullText.length && (
-                <span className="inline-block w-0.5 h-6 bg-amber-600 ml-1 animate-pulse"></span>
-              )}
-            </p>
+          <div className="bg-white/80 p-6 rounded-xl border-2 border-amber-200 shadow-lg">
+            <div className="space-y-4 text-base font-normal leading-relaxed text-gray-700">
+              <p>사주 팔자는 네 개의 기둥으로 이루어져 있습니다.</p>
+              <p>
+                <strong className="text-amber-700 font-bold">年柱(년주)</strong>
+                는 조상의 기운과 뿌리를,
+              </p>
+              <p>
+                <strong className="text-amber-700 font-bold">月柱(월주)</strong>
+                는 부모와 사회의 영향을,
+              </p>
+              <p>
+                <strong className="text-amber-700 font-bold">日柱(일주)</strong>
+                는 바로 나 자신의 본질을,
+              </p>
+              <p>
+                <strong className="text-amber-700 font-bold">時柱(시주)</strong>
+                는 자식과 내 미래의 방향을 담고 있습니다.
+              </p>
+              <p>
+                그 중심에 나를 나타내는{" "}
+                <strong className="text-amber-800 font-extrabold">
+                  日干(일간)
+                </strong>
+                이 있습니다.
+              </p>
+            </div>
           </div>
 
-          {showButton && !showInfo && (
+          {!showInfo && (
             <div className="mt-6 animate-fade-in">
               <button
                 onClick={() => setShowInfo(true)}
@@ -729,8 +1189,6 @@ const IljuAnalysisDisplay: React.FC<{
   sajuInfo: SajuInfo;
 }> = ({ iljuGanji, sajuInfo }) => {
   const [showInfo, setShowInfo] = useState(false);
-  const [typedText, setTypedText] = useState("");
-  const [showButton, setShowButton] = useState(false);
   const data = iljuDescriptions[iljuGanji];
 
   // 일지 십신 정보
@@ -739,36 +1197,6 @@ const IljuAnalysisDisplay: React.FC<{
 
   // 십이운성 정보
   const unseong = sajuInfo.pillars.day.jiJi.unseong;
-
-  const fullText =
-    "日柱(일주)는 나 자신의 핵심이자 배우자의 궁입니다. 일간은 내 영혼을, 일지는 내 몸과 배우자를 상징합니다. 일주를 통해 나의 본성과 배우자와의 인연, 그리고 인생의 안정감을 읽어낼 수 있습니다.";
-
-  React.useEffect(() => {
-    if (showInfo) return;
-
-    let index = 0;
-    let isMounted = true;
-
-    const typingInterval = setInterval(() => {
-      if (!isMounted) {
-        clearInterval(typingInterval);
-        return;
-      }
-
-      if (index <= fullText.length) {
-        setTypedText(fullText.slice(0, index));
-        index++;
-      } else {
-        clearInterval(typingInterval);
-        setShowButton(true);
-      }
-    }, 50);
-
-    return () => {
-      isMounted = false;
-      clearInterval(typingInterval);
-    };
-  }, [fullText, showInfo]);
 
   if (!data) return null;
 
@@ -794,16 +1222,37 @@ const IljuAnalysisDisplay: React.FC<{
           <h4 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-emerald-600 via-green-600 to-teal-500 bg-clip-text text-transparent mb-5">
             일주(日柱) - 나와 배우자
           </h4>
-          <div className="min-h-[140px] flex items-center justify-center">
-            <p className="text-lg md:text-xl text-gray-700 leading-relaxed font-medium max-w-3xl mx-auto">
-              {typedText}
-              {typedText.length < fullText.length && (
-                <span className="inline-block w-0.5 h-6 bg-emerald-600 ml-1 animate-pulse"></span>
-              )}
-            </p>
+          <div className="bg-white/80 p-6 rounded-xl border-2 border-emerald-200 shadow-lg">
+            <div className="space-y-4 text-base font-normal leading-relaxed text-gray-700">
+              <p>
+                <strong className="text-emerald-700 font-bold">
+                  일주(日柱)
+                </strong>
+                는 나 자신의 핵심이자 배우자의 궁입니다.
+              </p>
+              <p>
+                <strong className="text-emerald-600 font-semibold">
+                  일간(日干)
+                </strong>
+                은 내{" "}
+                <strong className="text-emerald-700 font-bold">영혼</strong>을,{" "}
+                <strong className="text-emerald-600 font-semibold">
+                  일지(日支)
+                </strong>
+                는 내{" "}
+                <strong className="text-emerald-700 font-bold">
+                  몸과 배우자
+                </strong>
+                를 상징합니다.
+              </p>
+              <p>
+                일주를 통해 나의 본성과 배우자와의 인연, 그리고 인생의 안정감을
+                읽어낼 수 있습니다.
+              </p>
+            </div>
           </div>
 
-          {showButton && !showInfo && (
+          {!showInfo && (
             <div className="mt-6 animate-fade-in">
               <button
                 onClick={() => setShowInfo(true)}
@@ -1452,6 +1901,9 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({
 
         <InteractionsDisplay sajuInfo={sajuData} />
         <SinsalDisplay sajuInfo={sajuData} />
+
+        {/* 오행의 기운 섹션 */}
+        <OhaengEnergyDisplay ilganChar={ilganChar} sajuInfo={sajuData} />
 
         {/* 일간 성격 확인 섹션 */}
         <IlganPersonalityDisplay ilganChar={ilganChar} />
