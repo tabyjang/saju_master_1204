@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import type { Gender, SajuInfo } from "../types";
 import { WandIcon, InfoIcon } from "./icons";
 import {
@@ -15,6 +15,24 @@ const heavenlyStems = [
 const earthlyBranches = [
   "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"
 ];
+
+// 양간: 甲, 丙, 戊, 庚, 壬
+const yangGan = ["甲", "丙", "戊", "庚", "壬"];
+// 음간: 乙, 丁, 己, 辛, 癸
+const yinGan = ["乙", "丁", "己", "辛", "癸"];
+
+// 양지: 子, 寅, 辰, 午, 申, 戌
+const yangJi = ["子", "寅", "辰", "午", "申", "戌"];
+// 음지: 丑, 卯, 巳, 未, 酉, 亥
+const yinJi = ["丑", "卯", "巳", "未", "酉", "亥"];
+
+// 천간이 양간인지 음간인지 확인
+const isYangGan = (gan: string): boolean => yangGan.includes(gan);
+const isYinGan = (gan: string): boolean => yinGan.includes(gan);
+
+// 지지가 양지인지 음지인지 확인
+const isYangJi = (ji: string): boolean => yangJi.includes(ji);
+const isYinJi = (ji: string): boolean => yinJi.includes(ji);
 
 interface SajuInputFormProps {
   onAnalyze: (data: SajuInfo) => void;
@@ -166,6 +184,75 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
     hourJi: "",
   });
 
+  // 가능한 년도 목록 및 선택된 년도
+  const [possibleYears, setPossibleYears] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+
+  // 년주로부터 가능한 년도 계산 (1940-2050 범위)
+  const calculatePossibleYears = (gan: string, ji: string): number[] => {
+    if (!gan || !ji) return [];
+
+    const ganIndex = heavenlyStems.indexOf(gan);
+    const jiIndex = earthlyBranches.indexOf(ji);
+
+    if (ganIndex === -1 || jiIndex === -1) return [];
+
+    // 60갑자 주기에서 해당 간지가 나타나는 인덱스 찾기
+    // 천간은 10년 주기, 지지는 12년 주기이므로
+    // i % 10 = ganIndex && i % 12 = jiIndex를 만족하는 i를 찾아야 함
+    let ganjiIndex = -1;
+    for (let i = 0; i < 60; i++) {
+      if (i % 10 === ganIndex && i % 12 === jiIndex) {
+        ganjiIndex = i;
+        break;
+      }
+    }
+
+    if (ganjiIndex === -1) return [];
+
+    // 년도 계산: yearGapjaIndex = (year - 4 + 60) % 60
+    // 역산: year = (ganjiIndex - 4 + 60) % 60 + 60 * k + 4
+    // 또는: year = ganjiIndex + 60 * k + 4 (단, ganjiIndex < 4이면 60을 더해야 함)
+    // 1984년이 갑자년(인덱스 0)이므로: 1984 = 0 + 60 * k + 4 → k = 33
+    // 따라서: year = ganjiIndex + 60 * k + 4
+
+    const years: number[] = [];
+    
+    // 1940-2050 범위에서 가능한 모든 년도 찾기
+    // k의 범위를 넓게 잡아서 모든 가능한 년도 찾기
+    for (let k = -35; k <= 35; k++) {
+      const year = ganjiIndex + 60 * k + 4;
+      if (year >= 1940 && year <= 2050) {
+        years.push(year);
+      }
+    }
+
+    return years.sort((a, b) => a - b);
+  };
+
+  // 년주가 변경될 때 가능한 년도 계산
+  React.useEffect(() => {
+    if (directSaju.yearGan && directSaju.yearJi) {
+      const years = calculatePossibleYears(directSaju.yearGan, directSaju.yearJi);
+      setPossibleYears(years);
+      
+      if (years.length === 1) {
+        // 년도가 1개면 자동 선택
+        setSelectedYear(years[0]);
+      } else if (years.length > 1) {
+        // 년도가 여러 개면 첫 번째를 기본값으로 (사용자가 선택 가능)
+        if (!selectedYear || !years.includes(selectedYear)) {
+          setSelectedYear(years[0]);
+        }
+      } else {
+        setSelectedYear(null);
+      }
+    } else {
+      setPossibleYears([]);
+      setSelectedYear(null);
+    }
+  }, [directSaju.yearGan, directSaju.yearJi]);
+
   const [birthDate, setBirthDate] = useState({
     year: new Date().getFullYear().toString(),
     month: (new Date().getMonth() + 1).toString(),
@@ -177,10 +264,75 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
   const inputClass =
     "w-full p-3 bg-white/50 hover:bg-white/80 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed text-base";
 
+  // 필터링된 천간 목록 반환 (지지에 따라)
+  const getFilteredGan = (ji: string): string[] => {
+    if (!ji) return heavenlyStems;
+    if (isYangJi(ji)) return yangGan;
+    if (isYinJi(ji)) return yinGan;
+    return heavenlyStems;
+  };
+
+  // 필터링된 지지 목록 반환 (천간에 따라)
+  const getFilteredJi = (gan: string): string[] => {
+    if (!gan) return earthlyBranches;
+    if (isYangGan(gan)) return yangJi;
+    if (isYinGan(gan)) return yinJi;
+    return earthlyBranches;
+  };
+
   const handleDirectSajuChange = (field: keyof typeof directSaju) => (
     e: ChangeEvent<HTMLSelectElement>
   ) => {
-    setDirectSaju({ ...directSaju, [field]: e.target.value });
+    const newValue = e.target.value;
+    const updatedSaju = { ...directSaju, [field]: newValue };
+
+    // 천간을 선택한 경우, 해당하는 지지가 유효하지 않으면 지지를 초기화
+    if (field === "yearGan" && newValue) {
+      const filteredJi = getFilteredJi(newValue);
+      if (directSaju.yearJi && !filteredJi.includes(directSaju.yearJi)) {
+        updatedSaju.yearJi = "";
+      }
+    } else if (field === "monthGan" && newValue) {
+      const filteredJi = getFilteredJi(newValue);
+      if (directSaju.monthJi && !filteredJi.includes(directSaju.monthJi)) {
+        updatedSaju.monthJi = "";
+      }
+    } else if (field === "dayGan" && newValue) {
+      const filteredJi = getFilteredJi(newValue);
+      if (directSaju.dayJi && !filteredJi.includes(directSaju.dayJi)) {
+        updatedSaju.dayJi = "";
+      }
+    } else if (field === "hourGan" && newValue) {
+      const filteredJi = getFilteredJi(newValue);
+      if (directSaju.hourJi && !filteredJi.includes(directSaju.hourJi)) {
+        updatedSaju.hourJi = "";
+      }
+    }
+
+    // 지지를 선택한 경우, 해당하는 천간이 유효하지 않으면 천간을 초기화
+    if (field === "yearJi" && newValue) {
+      const filteredGan = getFilteredGan(newValue);
+      if (directSaju.yearGan && !filteredGan.includes(directSaju.yearGan)) {
+        updatedSaju.yearGan = "";
+      }
+    } else if (field === "monthJi" && newValue) {
+      const filteredGan = getFilteredGan(newValue);
+      if (directSaju.monthGan && !filteredGan.includes(directSaju.monthGan)) {
+        updatedSaju.monthGan = "";
+      }
+    } else if (field === "dayJi" && newValue) {
+      const filteredGan = getFilteredGan(newValue);
+      if (directSaju.dayGan && !filteredGan.includes(directSaju.dayGan)) {
+        updatedSaju.dayGan = "";
+      }
+    } else if (field === "hourJi" && newValue) {
+      const filteredGan = getFilteredGan(newValue);
+      if (directSaju.hourGan && !filteredGan.includes(directSaju.hourGan)) {
+        updatedSaju.hourGan = "";
+      }
+    }
+
+    setDirectSaju(updatedSaju);
   };
 
   const handleDirectSubmit = (e: FormEvent) => {
@@ -214,12 +366,35 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
         directSaju.yearJi,   // 년지
       ];
 
-      // 대운 계산을 위해 월주 간지를 사용 (기본값으로 양력 대운 사용)
-      const daewoon = "sunhaeng";
-      const daewoonNumber = 0; // 직접 입력 시 대운 번호는 0으로 설정
+      // 대운 방향 계산: 년간과 성별에 따라 결정
+      // 양년(갑, 병, 무, 경, 임) + 남성 → 순행
+      // 양년(갑, 병, 무, 경, 임) + 여성 → 역행
+      // 음년(을, 정, 기, 신, 계) + 남성 → 역행
+      // 음년(을, 정, 기, 신, 계) + 여성 → 순행
+      const isYangYear = isYangGan(directSaju.yearGan);
+      let daewoon: "sunhaeng" | "yeokhaeng";
+      if (isYangYear) {
+        // 양년: 남성은 순행, 여성은 역행
+        daewoon = gender === "male" ? "sunhaeng" : "yeokhaeng";
+      } else {
+        // 음년: 남성은 역행, 여성은 순행
+        daewoon = gender === "male" ? "yeokhaeng" : "sunhaeng";
+      }
+      const daewoonNumber = 5; // 직접 입력 시 대운 번호는 5로 설정
+
+      // 선택된 년도 사용 (없으면 첫 번째 가능한 년도 또는 2000)
+      // 년도가 선택되지 않았거나 가능한 년도가 없으면 계산
+      let birthYear = selectedYear;
+      if (!birthYear && possibleYears.length > 0) {
+        birthYear = possibleYears[0];
+      }
+      if (!birthYear) {
+        // 가능한 년도가 없으면 기본값 사용 (하지만 이 경우는 거의 없을 것)
+        birthYear = 2000;
+      }
 
       const numericBirthDate = {
-        year: 2000, // 직접 입력 시 생년월일은 의미 없음
+        year: birthYear,
         month: 1,
         day: 1,
         hour: isHourUnknown ? -1 : 12,
@@ -461,6 +636,34 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
             <label className="block text-base font-bold text-gray-800 mb-3 text-center">
               사주 팔자 직접 입력
             </label>
+            {/* 가능한 년도 표시 */}
+            {possibleYears.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-center gap-4 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-700">
+                    {directSaju.yearGan}{directSaju.yearJi}년 가능한 년도:
+                  </span>
+                  {possibleYears.length === 1 ? (
+                    <span className="text-base font-bold text-blue-700">
+                      {possibleYears[0]}년
+                    </span>
+                  ) : (
+                    <select
+                      value={selectedYear || ""}
+                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                      className="px-4 py-2 bg-white border border-blue-300 rounded-lg text-base font-semibold text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      disabled={isLoading}
+                    >
+                      {possibleYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}년
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="p-4 bg-black/5 rounded-xl border border-gray-200">
               <div className="space-y-4">
                 {/* 년주 */}
@@ -477,7 +680,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       required
                     >
                       <option value="">선택</option>
-                      {heavenlyStems.map((gan) => (
+                      {getFilteredGan(directSaju.yearJi).map((gan) => (
                         <option key={gan} value={gan}>
                           {gan}
                         </option>
@@ -496,7 +699,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       required
                     >
                       <option value="">선택</option>
-                      {earthlyBranches.map((ji) => (
+                      {getFilteredJi(directSaju.yearGan).map((ji) => (
                         <option key={ji} value={ji}>
                           {ji}
                         </option>
@@ -519,7 +722,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       required
                     >
                       <option value="">선택</option>
-                      {heavenlyStems.map((gan) => (
+                      {getFilteredGan(directSaju.monthJi).map((gan) => (
                         <option key={gan} value={gan}>
                           {gan}
                         </option>
@@ -538,7 +741,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       required
                     >
                       <option value="">선택</option>
-                      {earthlyBranches.map((ji) => (
+                      {getFilteredJi(directSaju.monthGan).map((ji) => (
                         <option key={ji} value={ji}>
                           {ji}
                         </option>
@@ -561,7 +764,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       required
                     >
                       <option value="">선택</option>
-                      {heavenlyStems.map((gan) => (
+                      {getFilteredGan(directSaju.dayJi).map((gan) => (
                         <option key={gan} value={gan}>
                           {gan}
                         </option>
@@ -580,7 +783,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       required
                     >
                       <option value="">선택</option>
-                      {earthlyBranches.map((ji) => (
+                      {getFilteredJi(directSaju.dayGan).map((ji) => (
                         <option key={ji} value={ji}>
                           {ji}
                         </option>
@@ -602,7 +805,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       disabled={isLoading}
                     >
                       <option value="">선택 안 함</option>
-                      {heavenlyStems.map((gan) => (
+                      {getFilteredGan(directSaju.hourJi).map((gan) => (
                         <option key={gan} value={gan}>
                           {gan}
                         </option>
@@ -620,7 +823,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
                       disabled={isLoading}
                     >
                       <option value="">선택 안 함</option>
-                      {earthlyBranches.map((ji) => (
+                      {getFilteredJi(directSaju.hourGan).map((ji) => (
                         <option key={ji} value={ji}>
                           {ji}
                         </option>

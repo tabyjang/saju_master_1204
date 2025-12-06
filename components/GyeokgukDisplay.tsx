@@ -10,6 +10,7 @@ import { analyzeGeokguk } from "../utils/gyeokguk";
 import { geokgukDescriptions } from "../utils/geokgukDescriptions";
 import { earthlyBranchGanInfo } from "../utils/manse";
 import { allJijangganData } from "../utils/geokguk-data";
+import { ChevronDownIcon } from "./icons";
 
 // 오행 색상 맵 (AnalysisResult와 동일)
 const ohaengColorMap: Record<
@@ -50,6 +51,7 @@ interface GyeokgukDisplayProps {
 export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
   sajuInfo,
 }) => {
+  const [isOpen, setIsOpen] = useState(true);
   const [geokgukResult, setGeokgukResult] = useState<GeokgukResult | null>(
     null
   );
@@ -80,19 +82,34 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
   };
 
   return (
-    <div className="mt-8">
-      <div className="p-6 bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 rounded-2xl border-2 border-indigo-200 shadow-lg animate-fade-in glass-card">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-400 to-blue-400 rounded-full mb-4 animate-pulse shadow-lg">
-            <span className="text-4xl">🎯</span>
+    <div className="mt-8 glass-card">
+      <button
+        className="w-full p-4 md:p-6 text-left flex justify-between items-center bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 rounded-2xl border-2 border-indigo-200 relative z-10"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-indigo-400 to-blue-400 rounded-full shadow-lg">
+            <span className="text-2xl">🎯</span>
           </div>
-          <h4 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 bg-clip-text text-transparent mb-5">
+          <h4 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 bg-clip-text text-transparent">
             격국(格局)이란?
           </h4>
+        </div>
+        <ChevronDownIcon
+          className={`w-6 h-6 text-gray-500 transition-transform duration-300 ${
+            isOpen ? "transform rotate-180" : ""
+          }`}
+        />
+      </button>
 
-          <div className="max-w-4xl mx-auto space-y-4 text-left">
-            <div className="bg-white/70 p-5 rounded-xl border border-indigo-200">
-              <p className="text-base font-normal leading-relaxed text-gray-700 mb-4">
+      {isOpen && (
+        <div className="p-4 md:p-6 pt-0 animate-fade-in-fast">
+          <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 rounded-2xl border-2 border-indigo-200 shadow-lg">
+            <div className="text-center">
+              <div className="max-w-4xl mx-auto space-y-4 text-left">
+                <div className="bg-white/70 p-5 rounded-xl border border-indigo-200">
+                  <p className="text-base font-normal leading-relaxed text-gray-700 mb-4">
                 <strong className="text-indigo-700">격국(格局)</strong>은
                 인생이라는 전쟁터에서 승리하기 위해 지급받은{" "}
                 <strong className="text-indigo-700">'단 하나의 필살기'</strong>
@@ -113,11 +130,11 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
                 남의 무기를 부러워하면 백전백패하지만, 내 격국에 맞는 무기를
                 갈고닦으면 반드시 정상에 오릅니다. 격국 분석은 당신이 손에 쥔 그
                 무기가 무엇인지 확인하는 가장 정교한 인생 전략서입니다.
-              </p>
-            </div>
+                  </p>
+                </div>
 
-            <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
-              <h5 className="font-bold text-yellow-800 mb-4 flex items-center gap-2">
+                <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                  <h5 className="font-bold text-yellow-800 mb-4 flex items-center gap-2">
                 <span className="text-xl">💡</span> 격국의 의미
               </h5>
               <div className="grid grid-cols-2 gap-4">
@@ -226,13 +243,12 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
                       강한 자신감으로 자수성가
                     </strong>
                   </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="mt-8 animate-fade-in">
-            <button
+              <div className="mt-8 animate-fade-in">
+                <button
               onClick={handleCheckGeokguk}
               disabled={isLoading}
               className="btn-primary flex items-center gap-3 py-4 px-8 rounded-full shadow-xl transform hover:scale-105 transition-all duration-300 mx-auto bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -256,15 +272,16 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
                   />
                 </svg>
               )}
-            </button>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* 격국 결과 표시 */}
-        {showResult && geokgukResult && (
-          <div className="mt-8 pt-8 border-t-2 border-indigo-300 animate-fade-in-fast">
-            {geokgukResult.판단가능 && geokgukResult.격국 ? (
-              <div className="space-y-6">
+          {/* 격국 결과 표시 */}
+          {showResult && geokgukResult && (
+            <div className="mt-8 pt-8 border-t-2 border-indigo-300 animate-fade-in-fast">
+              {geokgukResult.판단가능 && geokgukResult.격국 ? (
+                <div className="space-y-6">
                 {/* 성공 케이스 */}
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-300 shadow-lg">
                   <div className="text-center mb-6">
@@ -504,11 +521,11 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
                     )}
                   </div>
                 </div>
-              </div>
-            ) : (
-              /* 실패/예외 케이스 */
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-2xl border-2 border-yellow-300 shadow-lg">
-                <div className="text-center mb-4">
+                </div>
+              ) : (
+                /* 실패/예외 케이스 */
+                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-2xl border-2 border-yellow-300 shadow-lg">
+                  <div className="text-center mb-4">
                   <div className="inline-block px-4 py-2 bg-yellow-500 text-white rounded-full text-lg font-bold mb-3">
                     ⚠️ 격국 판단 어려움
                   </div>
@@ -544,11 +561,13 @@ export const GyeokgukDisplay: React.FC<GyeokgukDisplayProps> = ({
                     있습니다.
                   </p>
                 </div>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+          )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
