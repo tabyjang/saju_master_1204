@@ -193,7 +193,7 @@ const App: React.FC = () => {
         <div className="min-h-screen font-sans p-4 sm:p-6 lg:p-8">
             {isLoading && !analysisResult && <OhaengLoading />}
             <main className="max-w-7xl mx-auto relative">
-                <header className="text-center mb-12">
+                <header className="text-center mb-12 relative">
                      <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-800">
                          사주 분석
                     </h1>

@@ -8,6 +8,14 @@ import {
 } from "../utils/manse";
 import { Modal } from "./Modal";
 
+const heavenlyStems = [
+  "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"
+];
+
+const earthlyBranches = [
+  "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"
+];
+
 interface SajuInputFormProps {
   onAnalyze: (data: SajuInfo) => void;
   isLoading: boolean;
@@ -139,11 +147,24 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
   onAnalyze,
   isLoading,
 }) => {
+  const [inputMode, setInputMode] = useState<"date" | "direct">("date");
   const [gender, setGender] = useState<Gender>("female");
   const [dateError, setDateError] = useState<string | null>(null);
   const [location, setLocation] = useState(birthLocations[0].name);
   const [yajasiOption, setYajasiOption] = useState<"none" | "apply">("none");
   const [isYajasiInfoOpen, setIsYajasiInfoOpen] = useState<boolean>(false);
+  
+  // 사주 직접 입력용 상태
+  const [directSaju, setDirectSaju] = useState({
+    yearGan: "",
+    yearJi: "",
+    monthGan: "",
+    monthJi: "",
+    dayGan: "",
+    dayJi: "",
+    hourGan: "",
+    hourJi: "",
+  });
 
   const [birthDate, setBirthDate] = useState({
     year: new Date().getFullYear().toString(),
@@ -155,6 +176,74 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
 
   const inputClass =
     "w-full p-3 bg-white/50 hover:bg-white/80 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed text-base";
+
+  const handleDirectSajuChange = (field: keyof typeof directSaju) => (
+    e: ChangeEvent<HTMLSelectElement>
+  ) => {
+    setDirectSaju({ ...directSaju, [field]: e.target.value });
+  };
+
+  const handleDirectSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setDateError(null);
+
+    // 필수 입력 확인
+    if (
+      !directSaju.yearGan ||
+      !directSaju.yearJi ||
+      !directSaju.monthGan ||
+      !directSaju.monthJi ||
+      !directSaju.dayGan ||
+      !directSaju.dayJi
+    ) {
+      alert("년주, 월주, 일주는 필수로 입력해주세요.");
+      return;
+    }
+
+    try {
+      // characters 배열 생성 (시주, 일주, 월주, 년주 순서)
+      const isHourUnknown = !directSaju.hourGan || !directSaju.hourJi;
+      const characters = [
+        isHourUnknown ? "-" : directSaju.hourGan, // 시간
+        isHourUnknown ? "-" : directSaju.hourJi,  // 시지
+        directSaju.dayGan,   // 일간
+        directSaju.dayJi,   // 일지
+        directSaju.monthGan, // 월간
+        directSaju.monthJi,  // 월지
+        directSaju.yearGan,  // 년간
+        directSaju.yearJi,   // 년지
+      ];
+
+      // 대운 계산을 위해 월주 간지를 사용 (기본값으로 양력 대운 사용)
+      const daewoon = "sunhaeng";
+      const daewoonNumber = 0; // 직접 입력 시 대운 번호는 0으로 설정
+
+      const numericBirthDate = {
+        year: 2000, // 직접 입력 시 생년월일은 의미 없음
+        month: 1,
+        day: 1,
+        hour: isHourUnknown ? -1 : 12,
+        minute: isHourUnknown ? -1 : 0,
+      };
+
+      const sajuInfo = getSajuInfoFromCharacters(
+        characters,
+        gender,
+        daewoon,
+        daewoonNumber,
+        numericBirthDate,
+        location,
+        isHourUnknown
+      );
+      onAnalyze(sajuInfo);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "";
+      setDateError(errorMessage);
+      if (errorMessage) {
+        alert(errorMessage);
+      }
+    }
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -244,8 +333,28 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="glass-card p-6 md:p-8">
-      <div className="space-y-8">
+    <div className="relative">
+      {/* 모드 전환 버튼 */}
+      <div className="absolute -top-12 right-0">
+        <button
+          type="button"
+          onClick={() => setInputMode(inputMode === "date" ? "direct" : "date")}
+          disabled={isLoading}
+          className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 border-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 ${
+            inputMode === "direct"
+              ? "bg-amber-500 text-white border-amber-500 shadow-lg"
+              : "bg-white text-gray-700 border-amber-300 hover:bg-amber-50"
+          }`}
+        >
+          {inputMode === "date" ? "사주 직접 입력" : "생년월일시 입력"}
+        </button>
+      </div>
+
+      <form
+        onSubmit={inputMode === "date" ? handleSubmit : handleDirectSubmit}
+        className="glass-card p-6 md:p-8"
+      >
+        <div className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Left Column: Gender */}
           <div>
@@ -331,21 +440,201 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
           </div>
         </div>
 
-        <div>
-          <label className="block text-base font-bold text-gray-800 mb-3 text-center">
-            생년월일시
-          </label>
-          <div className="p-4 bg-black/5 rounded-xl border border-gray-200">
-            <ManseInput
-              birthDate={birthDate}
-              setBirthDate={setBirthDate}
-              isLoading={isLoading}
-            />
+        {inputMode === "date" ? (
+          <div>
+            <label className="block text-base font-bold text-gray-800 mb-3 text-center">
+              생년월일시 (양력 기준)
+            </label>
+            <div className="p-4 bg-black/5 rounded-xl border border-gray-200">
+              <ManseInput
+                birthDate={birthDate}
+                setBirthDate={setBirthDate}
+                isLoading={isLoading}
+              />
+            </div>
+            {dateError && (
+              <p className="text-red-500 text-sm mt-2 text-center">{dateError}</p>
+            )}
           </div>
-          {dateError && (
-            <p className="text-red-500 text-sm mt-2 text-center">{dateError}</p>
-          )}
-        </div>
+        ) : (
+          <div>
+            <label className="block text-base font-bold text-gray-800 mb-3 text-center">
+              사주 팔자 직접 입력
+            </label>
+            <div className="p-4 bg-black/5 rounded-xl border border-gray-200">
+              <div className="space-y-4">
+                {/* 년주 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      년간 (年干)
+                    </label>
+                    <select
+                      value={directSaju.yearGan}
+                      onChange={handleDirectSajuChange("yearGan")}
+                      className={inputClass}
+                      disabled={isLoading}
+                      required
+                    >
+                      <option value="">선택</option>
+                      {heavenlyStems.map((gan) => (
+                        <option key={gan} value={gan}>
+                          {gan}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      년지 (年支)
+                    </label>
+                    <select
+                      value={directSaju.yearJi}
+                      onChange={handleDirectSajuChange("yearJi")}
+                      className={inputClass}
+                      disabled={isLoading}
+                      required
+                    >
+                      <option value="">선택</option>
+                      {earthlyBranches.map((ji) => (
+                        <option key={ji} value={ji}>
+                          {ji}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 월주 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      월간 (月干)
+                    </label>
+                    <select
+                      value={directSaju.monthGan}
+                      onChange={handleDirectSajuChange("monthGan")}
+                      className={inputClass}
+                      disabled={isLoading}
+                      required
+                    >
+                      <option value="">선택</option>
+                      {heavenlyStems.map((gan) => (
+                        <option key={gan} value={gan}>
+                          {gan}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      월지 (月支)
+                    </label>
+                    <select
+                      value={directSaju.monthJi}
+                      onChange={handleDirectSajuChange("monthJi")}
+                      className={inputClass}
+                      disabled={isLoading}
+                      required
+                    >
+                      <option value="">선택</option>
+                      {earthlyBranches.map((ji) => (
+                        <option key={ji} value={ji}>
+                          {ji}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 일주 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      일간 (日干)
+                    </label>
+                    <select
+                      value={directSaju.dayGan}
+                      onChange={handleDirectSajuChange("dayGan")}
+                      className={inputClass}
+                      disabled={isLoading}
+                      required
+                    >
+                      <option value="">선택</option>
+                      {heavenlyStems.map((gan) => (
+                        <option key={gan} value={gan}>
+                          {gan}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      일지 (日支)
+                    </label>
+                    <select
+                      value={directSaju.dayJi}
+                      onChange={handleDirectSajuChange("dayJi")}
+                      className={inputClass}
+                      disabled={isLoading}
+                      required
+                    >
+                      <option value="">선택</option>
+                      {earthlyBranches.map((ji) => (
+                        <option key={ji} value={ji}>
+                          {ji}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 시주 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      시간 (時干) <span className="text-gray-400">(선택)</span>
+                    </label>
+                    <select
+                      value={directSaju.hourGan}
+                      onChange={handleDirectSajuChange("hourGan")}
+                      className={inputClass}
+                      disabled={isLoading}
+                    >
+                      <option value="">선택 안 함</option>
+                      {heavenlyStems.map((gan) => (
+                        <option key={gan} value={gan}>
+                          {gan}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-sm text-gray-500 font-medium mb-1.5">
+                      시지 (時支) <span className="text-gray-400">(선택)</span>
+                    </label>
+                    <select
+                      value={directSaju.hourJi}
+                      onChange={handleDirectSajuChange("hourJi")}
+                      className={inputClass}
+                      disabled={isLoading}
+                    >
+                      <option value="">선택 안 함</option>
+                      {earthlyBranches.map((ji) => (
+                        <option key={ji} value={ji}>
+                          {ji}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {dateError && (
+              <p className="text-red-500 text-sm mt-2 text-center">{dateError}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <button
@@ -388,6 +677,7 @@ export const SajuInputForm: React.FC<SajuInputFormProps> = ({
           </div>
         </Modal>
       )}
-    </form>
+      </form>
+    </div>
   );
 };
