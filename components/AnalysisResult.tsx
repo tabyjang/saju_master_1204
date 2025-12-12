@@ -5,9 +5,10 @@ import type {
   Ohaeng,
   DaewoonPillar,
   SewoonPillar,
+  WolwoonPillar,
   SajuAnalysisResult,
 } from "../types";
-import { getSewoonPillars, earthlyBranchGanInfo } from "../utils/manse";
+import { getSewoonPillars, getWolwoonPillars, earthlyBranchGanInfo } from "../utils/manse";
 import { cheonEulGwiInMap } from "../utils/sinsal";
 import { ilganDescriptions } from "../utils/ilganDescriptions";
 import { iljuDescriptions } from "../utils/iljuDescriptions";
@@ -17,6 +18,7 @@ import { unseongDescriptions } from "../utils/unseongDescriptions";
 import { InteractionsDisplay } from "./InteractionsDisplay";
 import { SinsalDisplay } from "./SinsalDisplay";
 import { GyeokgukDisplay } from "./GyeokgukDisplay";
+import { MonthlyIljuCalendar } from "./MonthlyIljuCalendar";
 import {
   DiagnosisIcon,
   PrescriptionIcon,
@@ -471,7 +473,7 @@ const DaewoonFlowDisplay: React.FC<{ sajuInfo: SajuInfo }> = ({ sajuInfo }) => {
       </h3>
       <div className="overflow-x-auto pb-3 custom-scrollbar">
         <div className="flex flex-row justify-start md:justify-center">
-          <div className="inline-flex flex-row-reverse gap-2">
+          <div className="inline-flex gap-2">
             {daewoonPillars.map((p) => renderDaewoonPillar(p))}
           </div>
         </div>
@@ -551,8 +553,89 @@ const SewoonDisplay: React.FC<{ sajuInfo: SajuInfo }> = ({ sajuInfo }) => {
       </h3>
       <div className="overflow-x-auto pb-3 custom-scrollbar">
         <div className="flex flex-row justify-start md:justify-center">
-          <div className="inline-flex flex-row-reverse gap-2">
+          <div className="inline-flex gap-2">
             {sewoonPillars.map((p) => renderSewoonPillar(p))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 월운 표시 컴포넌트
+const WolwoonDisplay: React.FC<{ 
+  sajuInfo: SajuInfo; 
+  year: number;
+  yearGanji: string;
+}> = ({ sajuInfo, year, yearGanji }) => {
+  const ilGan = sajuInfo.pillars.day.cheonGan.char;
+  const wolwoonPillars = useMemo(
+    () => getWolwoonPillars(year, ilGan),
+    [year, ilGan]
+  );
+
+  const renderWolwoonPillar = (pillar: WolwoonPillar) => {
+    const ganColor = ohaengColorMap[pillar.cheonGan.ohaeng];
+    const jiColor = ohaengColorMap[pillar.jiJi.ohaeng];
+
+    return (
+      <div
+        key={pillar.monthName}
+        className="flex flex-col text-center text-xs md:text-sm p-1.5 bg-gray-900/5 rounded-lg border-2 border-gray-200 flex-shrink-0 w-[80px] md:w-[90px] shadow-md"
+      >
+        <div className="font-bold py-1 text-gray-800 saju-text-outline">
+          {pillar.month}월
+          <span className="block text-xs font-normal text-gray-600">
+            ({pillar.monthName})
+          </span>
+        </div>
+
+        <div className="py-1 h-9 flex items-center justify-center font-semibold text-gray-800 text-xs md:text-sm saju-text-outline">
+          {pillar.cheonGan.sibsin.name}
+        </div>
+
+        <div className="flex justify-center py-0.5">
+          <div
+            className={`saju-char-outline-small w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-2xl md:text-3xl font-bold rounded-md shadow-md ${
+              ganColor.bg
+            } ${ganColor.text} ${ganColor.border ?? ""}`}
+          >
+            {pillar.cheonGan.char}
+          </div>
+        </div>
+
+        <div className="flex justify-center py-0.5">
+          <div
+            className={`saju-char-outline-small w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-2xl md:text-3xl font-bold rounded-md shadow-md ${
+              jiColor.bg
+            } ${jiColor.text} ${jiColor.border ?? ""}`}
+          >
+            {pillar.jiJi.char}
+          </div>
+        </div>
+
+        <div className="py-1 h-9 flex items-center justify-center font-semibold text-gray-800 text-xs md:text-sm saju-text-outline">
+          {pillar.jiJi.sibsin.name}
+        </div>
+        <div className="py-1 h-9 flex items-center justify-center font-semibold text-gray-800 text-xs md:text-sm border-t border-gray-400/30 mt-1 saju-text-outline">
+          {pillar.jiJi.unseong.name}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-8 p-4 md:p-6 glass-card animate-fade-in">
+      <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
+        {year}년 {yearGanji}년 월운의 흐름
+        <span className="block text-sm font-normal text-gray-500 mt-1">
+          (입춘 기준, 인월부터 축월까지)
+        </span>
+      </h3>
+      <div className="overflow-x-auto pb-3 custom-scrollbar">
+        <div className="flex flex-row justify-start md:justify-center">
+          <div className="inline-flex gap-2">
+            {wolwoonPillars.map((p) => renderWolwoonPillar(p))}
           </div>
         </div>
       </div>
@@ -2084,6 +2167,8 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({
   const iljuGanji = sajuData.pillars.day.ganji; // e.g., "甲子"
   const [showAiDetails, setShowAiDetails] = useState(false);
   const [showDaewoon, setShowDaewoon] = useState(false);
+  const [showWolwoon, setShowWolwoon] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const stageInfo = useMemo(
     () =>
@@ -2205,6 +2290,48 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({
             <DaewoonFlowDisplay sajuInfo={sajuData} />
             <SewoonDisplay sajuInfo={sajuData} />
           </>
+        )}
+
+        {/* 2026년 월운 보기 버튼 */}
+        {showDaewoon && !showWolwoon && (
+          <div className="mt-8 flex justify-center animate-fade-in">
+            <button
+              onClick={() => setShowWolwoon(true)}
+              className="flex items-center gap-3 py-4 px-8 bg-gradient-to-r from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 text-white font-bold rounded-full shadow-xl transform hover:scale-105 transition-all duration-300"
+            >
+              <span className="text-2xl">📅</span>
+              <span className="text-lg">2026년 병오년 월운 보기</span>
+              <ChevronDownIcon className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* 2026년 월운 표시 */}
+        {showWolwoon && (
+          <WolwoonDisplay 
+            sajuInfo={sajuData} 
+            year={2026} 
+            yearGanji="병오"
+          />
+        )}
+
+        {/* 2026년 월별 달력 보기 버튼 */}
+        {showWolwoon && !showCalendar && (
+          <div className="mt-8 flex justify-center animate-fade-in">
+            <button
+              onClick={() => setShowCalendar(true)}
+              className="flex items-center gap-3 py-4 px-8 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-white font-bold rounded-full shadow-xl transform hover:scale-105 transition-all duration-300"
+            >
+              <span className="text-2xl">🗓️</span>
+              <span className="text-lg">2026년 월별 달력 보기</span>
+              <ChevronDownIcon className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* 2026년 월별 달력 표시 */}
+        {showCalendar && (
+          <MonthlyIljuCalendar sajuInfo={sajuData} />
         )}
 
         {/*  상세 분석 결과 토글 버튼 */}
