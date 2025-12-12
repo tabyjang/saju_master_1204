@@ -123,6 +123,12 @@ export const getDayGanjiByYMD = (
 export const getUnseongByIlganAndJiji = (ilgan: string, jiji: string) =>
   getUnseong(ilgan, jiji);
 
+/**
+ * 캘린더 표기용: 일간 기준으로 특정 천간/지지의 십신(十神)을 계산합니다.
+ */
+export const getSibsinByIlganAndTarget = (ilgan: string, target: string) =>
+  getSibsin(ilgan, target);
+
 const buildDateKST = (
   year: number,
   month: number,
