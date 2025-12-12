@@ -11,6 +11,7 @@ import type {
   Sibsin,
   DaewoonPillar,
   SewoonPillar,
+  WolwoonPillar,
 } from "../types";
 
 const heavenlyStems = [
@@ -91,6 +92,188 @@ const ganjiCycle: string[] = [];
 for (let i = 0; i < 60; i++) {
   ganjiCycle.push(heavenlyStems[i % 10] + earthlyBranches[i % 12]);
 }
+
+/**
+ * 자정(00:00) 기준으로 해당 날짜의 일주(일간/일지)를 계산합니다.
+ * - 캘린더 표기용: 시간(23시 보정/야자시) 로직을 적용하지 않습니다.
+ * - 내부 기준은 기존 `getSajuFromDate`의 일주 계산과 동일한 60갑자 기준식을 사용합니다.
+ */
+export const getDayGanjiByYMD = (
+  year: number,
+  month: number, // 1-12
+  day: number // 1-31
+): { gan: string; ji: string; ganji: string } => {
+  const refDateUTC = Date.UTC(2000, 0, 1);
+  const targetUTC = Date.UTC(year, month - 1, day);
+
+  const daysDiff = Math.floor((targetUTC - refDateUTC) / (1000 * 60 * 60 * 24));
+  const dayGapjaIndex = (54 + daysDiff) % 60;
+  const finalDayGapjaIndex =
+    dayGapjaIndex < 0 ? dayGapjaIndex + 60 : dayGapjaIndex;
+
+  const gan = heavenlyStems[finalDayGapjaIndex % 10];
+  const ji = earthlyBranches[finalDayGapjaIndex % 12];
+
+  return { gan, ji, ganji: gan + ji };
+};
+
+/**
+ * 캘린더 표기용: 일간 기준으로 특정 일지의 십이운성(十二運星)을 계산합니다.
+ */
+export const getUnseongByIlganAndJiji = (ilgan: string, jiji: string) =>
+  getUnseong(ilgan, jiji);
+
+const buildDateKST = (
+  year: number,
+  month: number,
+  day: number,
+  hour: number = 0,
+  minute: number = 0
+) => {
+  const isoStr = `${year}-${String(month).padStart(2, "0")}-${String(
+    day
+  ).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(
+    minute
+  ).padStart(2, "0")}:00+09:00`;
+  return new Date(isoStr);
+};
+
+/**
+ * 절기 기준으로 특정 날짜의 월주(월간지)를 계산합니다. (KST 기준)
+ * - 반환되는 월지는 寅월(입춘)부터 子월(대설)까지이며, 연말/연초 경계도 절기 기준으로 처리합니다.
+ * - 데이터 범위(1940~2050)를 벗어나면 에러를 던집니다.
+ */
+export const getMonthGanjiByDateKST = (dateKST: Date): {
+  sajuYear: number;
+  monthBranch: string;
+  monthBranchIndexInCycle: number;
+  monthGanji: string;
+  monthName: string;
+  termStart: Date;
+  termEnd: Date | null;
+} => {
+  if (isNaN(dateKST.getTime())) {
+    throw new Error("유효하지 않은 날짜입니다.");
+  }
+
+  const year = dateKST.getFullYear();
+  const yearTerms = solarTermsData[year.toString()];
+  if (!yearTerms) {
+    throw new Error(
+      `Solar term data not available for year ${year}. Please use years between 1940-2050.`
+    );
+  }
+
+  // 사주 연도는 입춘 기준
+  const ipchun = parseSolarTermDate(year, yearTerms[2]);
+  let sajuYear = dateKST < ipchun ? year - 1 : year;
+
+  const sajuYearTerms = solarTermsData[sajuYear.toString()];
+  const nextSolarYearTerms = solarTermsData[(sajuYear + 1).toString()];
+  if (!sajuYearTerms) {
+    throw new Error(
+      `Solar term data not available for Saju year ${sajuYear}. Please use years between 1940-2050.`
+    );
+  }
+
+  // 월 시작 절기 인덱스: 2(입춘), 4(경칩), ..., 22(대설), 0(소한)
+  const jeolgiIndices = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 0];
+  const sajuMonthBranches = [
+    "寅",
+    "卯",
+    "辰",
+    "巳",
+    "午",
+    "未",
+    "申",
+    "酉",
+    "戌",
+    "亥",
+    "子",
+    "丑",
+  ];
+
+  // 절기 경계 시점 리스트(가능한 범위만 생성)
+  const jeolgiDates: (Date | null)[] = [];
+  for (let i = 0; i < jeolgiIndices.length; i++) {
+    const termIndex = jeolgiIndices[i];
+    if (termIndex === 0) {
+      // 소한은 다음 해 데이터가 필요하지만, 마지막 해(2050) 등에서 없을 수 있음
+      if (nextSolarYearTerms) {
+        jeolgiDates.push(parseSolarTermDate(sajuYear + 1, nextSolarYearTerms[0]));
+      } else {
+        jeolgiDates.push(null);
+      }
+    } else {
+      jeolgiDates.push(parseSolarTermDate(sajuYear, sajuYearTerms[termIndex]));
+    }
+  }
+
+  // 다음 입춘(경계) - 다음 해 데이터가 없으면 null 처리
+  const nextIpchun = nextSolarYearTerms
+    ? parseSolarTermDate(sajuYear + 1, nextSolarYearTerms[2])
+    : null;
+
+  // 월 결정: dateKST가 속한 절기 구간의 i를 찾음
+  let monthBranchIndexInCycle = -1;
+  let termStart: Date | null = null;
+  let termEnd: Date | null = null;
+
+  for (let i = 0; i < 12; i++) {
+    const start = jeolgiDates[i];
+    if (!start) continue;
+
+    // 다음 경계: 다음 절기의 start가 있으면 그걸 사용, 없으면 (가능하면 다음 입춘) 또는 연말까지
+    let end: Date | null = null;
+    const nextStart = i === 11 ? nextIpchun : jeolgiDates[i + 1];
+    if (nextStart) end = nextStart;
+
+    const inRange =
+      dateKST >= start && (end ? dateKST < end : true);
+
+    if (inRange) {
+      monthBranchIndexInCycle = i;
+      termStart = start;
+      termEnd = end;
+      break;
+    }
+  }
+
+  if (monthBranchIndexInCycle === -1 || !termStart) {
+    // 방어적 처리: 데이터가 불완전한 최말년/최초년에서, 연말까지를 마지막 월(子)로 간주
+    // (캘린더 범위 클램프로 대부분 방지)
+    monthBranchIndexInCycle = 10; // 子
+    termStart = parseSolarTermDate(sajuYear, sajuYearTerms[22]); // 대설
+    termEnd = null;
+  }
+
+  const monthBranch = sajuMonthBranches[monthBranchIndexInCycle];
+
+  // 월두법으로 월간 계산(년간은 sajuYear 기준)
+  const yearGapjaIndex = (sajuYear - 4 + 60) % 60;
+  const yearStemIndex = yearGapjaIndex % 10;
+
+  let monthStemStartForInWol: number;
+  if (yearStemIndex === 0 || yearStemIndex === 5) monthStemStartForInWol = 2; // 갑기 -> 병
+  else if (yearStemIndex === 1 || yearStemIndex === 6) monthStemStartForInWol = 4; // 을경 -> 무
+  else if (yearStemIndex === 2 || yearStemIndex === 7) monthStemStartForInWol = 6; // 병신 -> 경
+  else if (yearStemIndex === 3 || yearStemIndex === 8) monthStemStartForInWol = 8; // 정임 -> 임
+  else monthStemStartForInWol = 0; // 무계 -> 갑
+
+  const monthStemIndex = (monthStemStartForInWol + monthBranchIndexInCycle) % 10;
+  const monthGan = heavenlyStems[monthStemIndex];
+  const monthGanji = monthGan + monthBranch;
+
+  return {
+    sajuYear,
+    monthBranch,
+    monthBranchIndexInCycle,
+    monthGanji,
+    monthName: monthNames[monthBranch] || "-",
+    termStart,
+    termEnd,
+  };
+};
 
 export const earthlyBranchGanInfo: {
   [key: string]: { ohaeng: Ohaeng; yinYang: YinYang };
@@ -631,5 +814,112 @@ export const getSewoonPillars = (
       jiJi,
     });
   }
+  return pillars;
+};
+
+// 월운 계산을 위한 월간 시작 매핑 (년간에 따른 인월의 천간)
+// 甲/己년: 丙寅, 乙/庚년: 戊寅, 丙/辛년: 庚寅, 丁/壬년: 壬寅, 戊/癸년: 甲寅
+const monthGanStartMap: { [key: string]: number } = {
+  甲: 2, // 丙(2)부터
+  己: 2,
+  乙: 4, // 戊(4)부터
+  庚: 4,
+  丙: 6, // 庚(6)부터
+  辛: 6,
+  丁: 8, // 壬(8)부터
+  壬: 8,
+  戊: 0, // 甲(0)부터
+  癸: 0,
+};
+
+// 월 이름 (지지 기준)
+const monthNames: { [key: string]: string } = {
+  寅: "인월",
+  卯: "묘월",
+  辰: "진월",
+  巳: "사월",
+  午: "오월",
+  未: "미월",
+  申: "신월",
+  酉: "유월",
+  戌: "술월",
+  亥: "해월",
+  子: "자월",
+  丑: "축월",
+};
+
+// 월 지지 순서 (인월부터)
+const monthBranches = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"];
+
+// 양력 월 매핑 (입춘 기준, 대략적)
+// 인월(寅): 2월, 묘월(卯): 3월, ... 축월(丑): 1월(다음해)
+const solarMonthMap: { [key: string]: number } = {
+  寅: 2,
+  卯: 3,
+  辰: 4,
+  巳: 5,
+  午: 6,
+  未: 7,
+  申: 8,
+  酉: 9,
+  戌: 10,
+  亥: 11,
+  子: 12,
+  丑: 1,
+};
+
+/**
+ * 특정 년도의 월운(12개월) 계산
+ * @param year 년도 (예: 2026)
+ * @param ilGan 일간 (십신 계산용)
+ * @returns 12개월의 월운 배열 (인월부터 축월까지)
+ */
+export const getWolwoonPillars = (
+  year: number,
+  ilGan: string
+): WolwoonPillar[] => {
+  // 해당 년도의 년간 구하기
+  const yearGapjaIndex = (year - 4 + 60) % 60;
+  const yearGanji = ganjiCycle[yearGapjaIndex];
+  const yearGan = yearGanji[0];
+  
+  // 년간에 따른 인월의 월간 시작 인덱스
+  const monthGanStart = monthGanStartMap[yearGan];
+  
+  const pillars: WolwoonPillar[] = [];
+  
+  for (let i = 0; i < 12; i++) {
+    const ji = monthBranches[i];
+    const ganIndex = (monthGanStart + i) % 10;
+    const gan = heavenlyStems[ganIndex];
+    const ganji = gan + ji;
+    
+    const cheonGan: Gan = {
+      char: gan,
+      ohaeng: earthlyBranchGanInfo[gan].ohaeng,
+      sibsin: getSibsin(ilGan, gan),
+    };
+    
+    const jiJi: Ji = {
+      char: ji,
+      ohaeng: earthlyBranchGanInfo[ji].ohaeng,
+      sibsin: getSibsin(ilGan, ji),
+      jijanggan: (jijangganData[ji] || []).map((jigan) => ({
+        char: jigan,
+        ohaeng: earthlyBranchGanInfo[jigan].ohaeng,
+        sibsin: getSibsin(ilGan, jigan),
+      })),
+      unseong: getUnseong(ilGan, ji),
+    };
+    
+    pillars.push({
+      month: solarMonthMap[ji],
+      monthName: monthNames[ji],
+      ganji,
+      cheonGan,
+      jiJi,
+    });
+  }
+  
   return pillars;
 };
