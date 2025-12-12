@@ -55,6 +55,13 @@ export interface SewoonPillar {
   jiJi: Ji;
 }
 
+export interface WolwoonPillar {
+  month: number; // 양력 월 (1-12)
+  monthName: string; // 월 이름 (인월, 묘월, ...)
+  ganji: string; // 간지 (庚寅, 辛卯, ...)
+  cheonGan: Gan;
+  jiJi: Ji;
+}
 export interface SajuInfo {
   pillars: {
     year: Pillar;

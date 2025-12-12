@@ -5,6 +5,7 @@ import {
   getDayGanjiByYMD,
   getMonthGanjiByDateKST,
   getUnseongByIlganAndJiji,
+  getSibsinByIlganAndTarget,
 } from "../utils/manse";
 import { cheonEulGwiInMap } from "../utils/sinsal";
 
@@ -80,6 +81,39 @@ const SmallCharBox: React.FC<{ char: string }> = ({ char }) => {
   );
 };
 
+// 사주 원국 박스와 유사한 큼직한 크기(달력 셀 일주 표시용)
+const BigCharBox: React.FC<{ char: string }> = ({ char }) => {
+  const info = earthlyBranchGanInfo[char];
+  if (!info) return null;
+  const color = ohaengColorMap[info.ohaeng];
+
+  return (
+    <div
+      className={`saju-char-outline-small w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-2xl md:text-3xl font-bold rounded-md shadow-md ${color.bg} ${color.text} ${
+        color.border ?? ""
+      }`}
+    >
+      {char}
+    </div>
+  );
+};
+
+// 캘린더 셀 내부용: BigCharBox보다 한 단계 작은 크기
+const CalendarCharBox: React.FC<{ char: string }> = ({ char }) => {
+  const info = earthlyBranchGanInfo[char];
+  if (!info) return null;
+  const color = ohaengColorMap[info.ohaeng];
+
+  return (
+    <div
+      className={`saju-char-outline-small w-9 h-9 md:w-10 md:h-10 flex items-center justify-center text-xl md:text-2xl font-bold rounded-md shadow-md ${color.bg} ${color.text} ${
+        color.border ?? ""
+      }`}
+    >
+      {char}
+    </div>
+  );
+};
 export const MonthlyIljuCalendar: React.FC<{ sajuInfo: SajuInfo }> = ({
   sajuInfo,
 }) => {
@@ -115,7 +149,9 @@ export const MonthlyIljuCalendar: React.FC<{ sajuInfo: SajuInfo }> = ({
     const d = Math.min(selectedDay, daysInMonth);
     const { gan, ji, ganji } = getDayGanjiByYMD(viewYear, viewMonth, d);
     const unseong = getUnseongByIlganAndJiji(ilgan, ji);
-    return { d, gan, ji, ganji, unseong };
+    const sibsinGan = getSibsinByIlganAndTarget(ilgan, gan);
+    const sibsinJi = getSibsinByIlganAndTarget(ilgan, ji);
+    return { d, gan, ji, ganji, unseong, sibsinGan, sibsinJi };
   }, [ilgan, viewYear, viewMonth, selectedDay, daysInMonth]);
 
   const selectedMonthInfo = useMemo(() => {
@@ -168,13 +204,21 @@ export const MonthlyIljuCalendar: React.FC<{ sajuInfo: SajuInfo }> = ({
   return (
     <div className="mt-8 p-4 md:p-6 glass-card animate-fade-in">
       {/* 헤더(선택 날짜 + 일주) */}
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="text-lg md:text-xl font-bold text-gray-800">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="text-lg md:text-xl font-bold text-gray-800 whitespace-nowrap">
           {headerText}
         </div>
-        <div className="flex items-center gap-2">
-          <SmallCharBox char={selectedDayInfo.gan} />
-          <SmallCharBox char={selectedDayInfo.ji} />
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <span className="text-sm md:text-base font-semibold text-gray-800 whitespace-nowrap">
+              ({selectedDayInfo.sibsinGan.name})
+            </span>
+            <BigCharBox char={selectedDayInfo.gan} />
+            <BigCharBox char={selectedDayInfo.ji} />
+            <span className="text-sm md:text-base font-semibold text-gray-800 whitespace-nowrap">
+              ({selectedDayInfo.sibsinJi.name}) ({selectedDayInfo.unseong.name})
+            </span>
+          </div>
         </div>
       </div>
 
@@ -212,13 +256,18 @@ export const MonthlyIljuCalendar: React.FC<{ sajuInfo: SajuInfo }> = ({
               ›
             </button>
           </div>
-          <div className="mt-2 text-gray-600 text-sm md:text-base">
-            월주:{" "}
-            <span className="font-semibold text-gray-800">
-              {selectedMonthInfo?.monthGanji ?? "-"}
-            </span>
+          <div className="mt-2 flex items-center gap-2 text-gray-600 text-sm md:text-base">
+            <span className="font-semibold text-gray-700 whitespace-nowrap">월주:</span>
+            {selectedMonthInfo?.monthGanji ? (
+              <>
+                <SmallCharBox char={selectedMonthInfo.monthGanji[0]} />
+                <SmallCharBox char={selectedMonthInfo.monthGanji[1]} />
+              </>
+            ) : (
+              <span className="font-semibold text-gray-800">-</span>
+            )}
             {selectedMonthInfo?.monthName ? (
-              <span className="ml-2 text-gray-500">({selectedMonthInfo.monthName})</span>
+              <span className="text-gray-500">({selectedMonthInfo.monthName})</span>
             ) : null}
           </div>
         </div>
@@ -230,7 +279,7 @@ export const MonthlyIljuCalendar: React.FC<{ sajuInfo: SajuInfo }> = ({
         {weekdayLabels.map((w) => (
           <div
             key={w}
-            className="text-center text-xs md:text-sm font-bold text-gray-600"
+            className="text-center text-sm md:text-base font-extrabold text-gray-800 tracking-wide"
           >
             {w}
           </div>
@@ -244,7 +293,7 @@ export const MonthlyIljuCalendar: React.FC<{ sajuInfo: SajuInfo }> = ({
             return (
               <div
                 key={`empty-${idx}`}
-                className="h-[64px] md:h-[76px] rounded-lg bg-gray-100/30"
+                className="h-[92px] md:h-[108px] rounded-lg bg-gray-100/30"
               />
             );
           }
@@ -256,26 +305,32 @@ export const MonthlyIljuCalendar: React.FC<{ sajuInfo: SajuInfo }> = ({
               key={`${viewYear}-${viewMonth}-${cell.day}`}
               type="button"
               onClick={() => setSelectedDay(cell.day)}
-              className={`h-[64px] md:h-[76px] rounded-lg border bg-white/60 hover:bg-white transition-colors overflow-hidden ${
-                isSelected ? "ring-2 ring-blue-400" : ""
+              className={`h-[92px] md:h-[108px] rounded-lg border transition-colors overflow-hidden ${
+                isSelected
+                  ? "bg-blue-200/70 border-blue-800 border-2 shadow-lg ring-2 ring-blue-400"
+                  : "bg-white/60 hover:bg-white"
               } ${
-                cell.isCheonEul ? "border-gray-900 border-2" : "border-gray-200"
+                !isSelected && cell.isCheonEul
+                  ? "border-gray-900 border-2"
+                  : !isSelected
+                  ? "border-gray-200"
+                  : ""
               }`}
             >
-              <div className="h-full grid grid-cols-[40px_1fr] grid-rows-2">
+              <div className="h-full grid grid-cols-[56px_44px] grid-rows-2 justify-center items-center">
                 {/* 좌측: 일주 */}
                 <div className="row-span-2 flex flex-col items-center justify-center gap-1 bg-white/30">
-                  <SmallCharBox char={cell.gan} />
-                  <SmallCharBox char={cell.ji} />
+                  <CalendarCharBox char={cell.gan} />
+                  <CalendarCharBox char={cell.ji} />
                 </div>
 
                 {/* 우측 상단: 날짜 */}
-                <div className="flex items-start justify-end pr-1 pt-1 text-xs font-bold text-gray-700">
+                <div className="flex items-start justify-center pt-1 text-sm font-extrabold text-gray-800">
                   {cell.day}
                 </div>
 
                 {/* 우측 하단: 십이운성 */}
-                <div className="flex items-end justify-end pr-1 pb-1 text-[10px] md:text-xs font-semibold text-gray-600">
+                <div className="flex items-end justify-center pb-1 text-xs md:text-sm font-bold text-gray-700">
                   {cell.unseong.name}
                 </div>
               </div>
