@@ -1511,6 +1511,7 @@ const IljuAnalysisDisplay: React.FC<{
   const [showIljiSibsin, setShowIljiSibsin] = useState(false);
   const [showIljiSibsinSpecial, setShowIljiSibsinSpecial] = useState(false);
   const [showIljiUnseong, setShowIljiUnseong] = useState(false);
+  const [showIljiUnseongSpecial, setShowIljiUnseongSpecial] = useState(false);
   const [iljuData, setIljuData] = useState<IljuBundle | null>(null);
   const [iljuDataLoading, setIljuDataLoading] = useState(false);
   const [iljuDataError, setIljuDataError] = useState<string | null>(null);
@@ -1519,6 +1520,9 @@ const IljuAnalysisDisplay: React.FC<{
   const iljiSibsin =
     iljuData?.ilji?.sibsin?.name ?? sajuInfo.pillars.day.jiJi.sibsin.name;
   const iljiChar = sajuInfo.pillars.day.jiJi.char;
+
+  // 일지 십이운성 정보
+  const iljiUnseong = sajuInfo.pillars.day.jiJi.unseong?.name ?? "";
 
   useEffect(() => {
     // 간지가 바뀌면 로드 상태 초기화
@@ -1725,6 +1729,18 @@ const IljuAnalysisDisplay: React.FC<{
                   </div>
 
                   <div className="bg-white/60 p-5 rounded-xl border border-gray-200">
+                    <h4 className="text-lg font-bold text-blue-700 mb-2 flex items-center gap-2">
+                      💼 직업 · 재물운
+                    </h4>
+                    <p className="text-base md:text-lg font-normal leading-relaxed text-gray-800 word-keep-all whitespace-pre-line">
+                      {renderBoldMarkdown(
+                        iljuData?.general.jobWealth ?? "",
+                        "font-extrabold text-blue-900"
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="bg-white/60 p-5 rounded-xl border border-gray-200">
                     <h4 className="text-lg font-bold text-emerald-800 mb-2 flex items-center gap-2">
                       🍀 족집게 조언
                     </h4>
@@ -1765,39 +1781,27 @@ const IljuAnalysisDisplay: React.FC<{
               <p className="mt-4 text-gray-700 text-base md:text-lg">
                 아래 버튼을 누르면,{" "}
                 <strong className="text-pink-900 font-extrabold">
-                  {iljiChar}
+                  {iljiSibsin}
                 </strong>
-                위에 놓인{" "}
-                <strong className="text-pink-900 font-extrabold">
-                  {` ${iljiSibsin}`}
-                </strong>
-                의 해설을 보여드릴게요.
+                의 일반적인 해설과 함께 이 일주만의 특별한 해석을 보여드릴게요.
               </p>
             </div>
 
-            {/* DB에 ilji.sibsin이 준비되면 버튼/상세 오픈 */}
-            {!iljuData?.ilji?.sibsin && (
-              <div className="mt-6 bg-white/70 p-4 rounded-xl border border-pink-200 text-center text-gray-700">
-                아직 이 일주의 <strong className="text-pink-900">일주 십신</strong>{" "}
-                해설(DB의 <code>ilji.sibsin</code>)이 준비되지 않았어요. 해당
-                JSON을 채우면 버튼이 활성화됩니다.
-              </div>
-            )}
-
-            {iljuData?.ilji?.sibsin && !showIljiSibsin && (
+            {/* 첫 번째 버튼: sibsinDescriptions의 일반 해설 (항상 표시) */}
+            {!showIljiSibsin && (
               <div className="mt-6 animate-fade-in text-center">
                 <button
                   type="button"
                   onClick={() => setShowIljiSibsin(true)}
                   className="btn-primary flex items-center gap-3 py-4 px-8 rounded-full shadow-xl transform hover:scale-105 transition-all duration-300 mx-auto bg-pink-600 hover:bg-pink-700"
                 >
-                  <span className="text-lg font-bold">일주 십신 분석 보기</span>
+                  <span className="text-lg font-bold">{iljiSibsin} 해설 보기</span>
                   <ChevronDownIcon className="w-5 h-5" />
                 </button>
               </div>
             )}
 
-            {iljuData?.ilji?.sibsin && showIljiSibsin && (
+            {showIljiSibsin && (
               <div className="mt-6 animate-fade-in-fast">
                 <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-pink-200">
                   <div className="flex items-center gap-3">
@@ -1825,14 +1829,25 @@ const IljuAnalysisDisplay: React.FC<{
                 <div className="bg-gradient-to-r from-pink-100/50 to-white p-5 rounded-xl border border-pink-300">
                   {(() => {
                     const base = sibsinDescriptions[iljiSibsin];
-                    const title = base?.title ?? iljuData.ilji?.sibsin?.title ?? iljiSibsin;
-                    const keywords =
-                      base?.keywords ?? iljuData.ilji?.sibsin?.keywords ?? [];
-                    const descriptionRaw =
-                      base?.description ?? iljuData.ilji?.sibsin?.description ?? "";
-                    const description = getSibsinDescriptionBeforePersonality(
-                      descriptionRaw
-                    );
+
+                    // sibsinDescriptions에서 가져오기 (우선)
+                    const title = base?.title ?? iljiSibsin;
+                    const keywords = base?.keywords ?? [];
+                    const description = base?.description ?? "";
+
+                    // 데이터가 없는 경우
+                    if (!base || !description) {
+                      return (
+                        <div className="text-center py-8">
+                          <p className="text-gray-600 mb-2">
+                            아직 <strong className="text-pink-900">{iljiSibsin}</strong>의 일반 해설이 준비되지 않았습니다.
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            sibsinDescriptions.ts에 "{iljiSibsin}" 항목을 확인해주세요.
+                          </p>
+                        </div>
+                      );
+                    }
 
                     return (
                       <>
@@ -1858,27 +1873,27 @@ const IljuAnalysisDisplay: React.FC<{
                       "font-extrabold text-pink-900"
                     )}
                   </p>
+
+                  {/* 일주별 십신 특별 해설 버튼: 일반 해설 박스 안에 표시 */}
+                  {iljuData?.ilji?.sibsin?.special_analysis && !showIljiSibsinSpecial && (
+                    <div className="mt-5 text-center">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-pink-600 text-white font-extrabold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                        onClick={() => setShowIljiSibsinSpecial(true)}
+                      >
+                        <span>✨</span>
+                        <span>{iljuGanji}의 {iljiSibsin} 특별 해설 보기</span>
+                        <ChevronDownIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                       </>
                     );
                   })()}
                 </div>
 
-                {/* 일주별 십신 특별 해설: 버튼 클릭 시에만 펼침 */}
-                {iljuData.ilji?.sibsin?.special_analysis && !showIljiSibsinSpecial && (
-                  <div className="mt-5 text-center">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border-2 border-pink-300 text-pink-900 font-extrabold shadow-sm hover:bg-pink-50 transition-colors"
-                      onClick={() => setShowIljiSibsinSpecial(true)}
-                    >
-                      <span>✨</span>
-                      <span>일주 십신 특별 해설 보기</span>
-                      <ChevronDownIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
-
-                {iljuData.ilji?.sibsin?.special_analysis && showIljiSibsinSpecial && (
+                {iljuData?.ilji?.sibsin?.special_analysis && showIljiSibsinSpecial && (
                   <div className="mt-5 bg-white/80 p-5 rounded-xl border-2 border-pink-200 shadow-sm">
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="inline-block px-3 py-1 bg-pink-100 text-pink-900 rounded-full text-sm font-semibold">
@@ -1916,14 +1931,79 @@ const IljuAnalysisDisplay: React.FC<{
                 십이운성(十二運星) 소개
               </div>
 
-              <div className="space-y-3 text-base md:text-lg font-normal leading-relaxed text-gray-800 whitespace-pre-line word-keep-all">
+              <div className="space-y-4 text-base md:text-lg font-normal leading-relaxed text-gray-800">
                 <p>
                   <strong className="text-amber-800 font-extrabold">
                     십이운성(十二運星)
                   </strong>
-                  은 기운이 태어나고 자라며 성숙하고 사라지는 흐름을 12단계로 보는
-                  개념입니다.
+                  은 마치 <strong className="text-amber-800 font-extrabold">'사람의 인생 주기'</strong>와 같습니다.
+                  자연에 봄, 여름, 가을, 겨울이 있듯이, 우리 사주에 있는 글자(에너지)들도 태어나서, 왕성하게 활동하다가, 약해지고, 다시 사라지는 순환 과정을 겪습니다.
+                  이 에너지의 강약과 상태를 12단계로 나눈 것이 바로 십이운성입니다.
                 </p>
+
+                <p>
+                  초보자도 이해하기 쉽게 <strong className="text-amber-800 font-extrabold">'사람의 일생'</strong>에 비유하여 4단계로 나누어 설명해 드릴게요.
+                </p>
+
+                <div className="bg-white/90 p-5 rounded-xl border border-amber-300 shadow-sm">
+                  <h4 className="text-lg font-bold text-amber-900 mb-3 flex items-center gap-2">
+                    <span>💡</span>
+                    <span>한눈에 보는 요약</span>
+                  </h4>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-sm md:text-base">
+                      <thead>
+                        <tr className="bg-amber-100">
+                          <th className="border border-amber-300 px-3 py-2 text-amber-900 font-bold">시기</th>
+                          <th className="border border-amber-300 px-3 py-2 text-amber-900 font-bold">단계</th>
+                          <th className="border border-amber-300 px-3 py-2 text-amber-900 font-bold">핵심 키워드</th>
+                          <th className="border border-amber-300 px-3 py-2 text-amber-900 font-bold">에너지 상태</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-white hover:bg-amber-50 transition-colors">
+                          <td className="border border-amber-300 px-3 py-2 font-semibold text-center">성장</td>
+                          <td className="border border-amber-300 px-3 py-2">장생, 목욕, 관대</td>
+                          <td className="border border-amber-300 px-3 py-2">시작, 후원, 호기심, 패기</td>
+                          <td className="border border-amber-300 px-3 py-2 text-center">📈 상승</td>
+                        </tr>
+                        <tr className="bg-white hover:bg-amber-50 transition-colors">
+                          <td className="border border-amber-300 px-3 py-2 font-semibold text-center">전성</td>
+                          <td className="border border-amber-300 px-3 py-2">건록, 제왕, 쇠</td>
+                          <td className="border border-amber-300 px-3 py-2">독립, 권력, 노련미</td>
+                          <td className="border border-amber-300 px-3 py-2 text-center">🔝 최상</td>
+                        </tr>
+                        <tr className="bg-white hover:bg-amber-50 transition-colors">
+                          <td className="border border-amber-300 px-3 py-2 font-semibold text-center">정신</td>
+                          <td className="border border-amber-300 px-3 py-2">병, 사, 묘</td>
+                          <td className="border border-amber-300 px-3 py-2">배려, 연구, 저장, 정신</td>
+                          <td className="border border-amber-300 px-3 py-2 text-center">📉 하강 (내면 강화)</td>
+                        </tr>
+                        <tr className="bg-white hover:bg-amber-50 transition-colors">
+                          <td className="border border-amber-300 px-3 py-2 font-semibold text-center">준비</td>
+                          <td className="border border-amber-300 px-3 py-2">절, 태, 양</td>
+                          <td className="border border-amber-300 px-3 py-2">단절, 잉태, 준비, 보호</td>
+                          <td className="border border-amber-300 px-3 py-2 text-center">🔄 순환 (잠재력)</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-500">
+                  <p className="font-semibold text-amber-900">
+                    ⚠️ 이것만 기억하세요!
+                  </p>
+                  <p className="mt-2">
+                    십이운성은 <strong className="text-amber-800">"좋다/나쁘다"</strong>가 아니라 <strong className="text-amber-800">"어떤 스타일의 힘인가?"</strong>를 보여줍니다.
+                  </p>
+                  <ul className="mt-2 ml-5 space-y-1 list-disc text-gray-700">
+                    <li>제왕이라고 무조건 성공하는 것이 아니고 (너무 강해 부러질 수 있음)</li>
+                    <li>절이라고 망하는 것이 아닙니다 (오히려 끊고 맺음이 확실해 매력적일 수 있음)</li>
+                  </ul>
+                </div>
+
                 <p>
                   일지에 걸린 운성은 특히{" "}
                   <strong className="text-amber-800 font-extrabold">
@@ -1932,76 +2012,181 @@ const IljuAnalysisDisplay: React.FC<{
                   의 체감과 연결되어, 내가 어떤 리듬으로 사람과 상황을 대하는지
                   보여줍니다.
                 </p>
+
                 <p className="text-gray-700">
-                  아래 버튼을 누르면, 일지 운성{" "}
+                  아래 버튼을 누르면,{" "}
                   <strong className="text-amber-800 font-extrabold">
-                    {iljuData?.ilji?.unseong?.name
-                      ? ` ${iljuData.ilji!.unseong!.name}`
-                      : ` ${sajuInfo.pillars.day.jiJi.unseong?.name ?? ""}`}
+                    {iljiUnseong}
                   </strong>
-                  {iljuData?.ilji?.unseong?.hanja
-                    ? ` (${iljuData.ilji!.unseong!.hanja})`
-                    : ""}
-                  의 해설을 보여드릴게요.
+                  의 일반적인 해설을 보여드릴게요.
                 </p>
               </div>
             </div>
 
-            {!iljuData?.ilji?.unseong && (
-              <div className="mt-6 bg-white/70 p-4 rounded-xl border border-amber-200 text-center text-gray-700">
-                아직 이 일주의 <strong className="text-amber-900">십이운성</strong>{" "}
-                해설(DB의 <code>ilji.unseong</code>)이 준비되지 않았어요. 해당
-                JSON을 채우면 버튼이 활성화됩니다.
-              </div>
-            )}
-
-            {iljuData?.ilji?.unseong && !showIljiUnseong && (
+            {/* 첫 번째 버튼: unseongDescriptions의 일반 해설 (항상 표시) */}
+            {!showIljiUnseong && (
               <div className="mt-6 animate-fade-in text-center">
                 <button
                   type="button"
                   onClick={() => setShowIljiUnseong(true)}
                   className="btn-primary flex items-center gap-3 py-4 px-8 rounded-full shadow-xl transform hover:scale-105 transition-all duration-300 mx-auto bg-amber-500 hover:bg-amber-600"
                 >
-                  <span className="text-lg font-bold">
-                    일주 십이운성 분석 보기
-                  </span>
+                  <span className="text-lg font-bold">{iljiUnseong} 해설 보기</span>
                   <ChevronDownIcon className="w-5 h-5" />
                 </button>
               </div>
             )}
 
-            {iljuData?.ilji?.unseong && showIljiUnseong && (
+            {showIljiUnseong && (
               <div className="mt-6 animate-fade-in-fast">
                 <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-amber-200">
                   <div className="flex items-center gap-3">
                     <div className="bg-amber-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm">
                       십이운성 (十二運星)
                     </div>
-                    <h4 className="text-xl font-bold text-amber-900">
-                      {iljuData.ilji!.unseong!.name}
-                      {iljuData.ilji!.unseong!.hanja
-                        ? ` (${iljuData.ilji!.unseong!.hanja})`
-                        : ""}
+                    <h4 className="text-xl md:text-2xl font-bold text-amber-900">
+                      {iljiUnseong}
                     </h4>
                   </div>
 
                   <button
                     type="button"
                     className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-sm"
-                    onClick={() => setShowIljiUnseong(false)}
+                    onClick={() => {
+                      setShowIljiUnseong(false);
+                      setShowIljiUnseongSpecial(false);
+                    }}
                   >
                     닫기
                   </button>
                 </div>
 
-                <div className="bg-white/80 p-5 rounded-xl border border-amber-200">
-                  <p className="text-base md:text-lg font-normal leading-relaxed text-gray-800 whitespace-pre-line word-keep-all">
-                    {renderBoldMarkdown(
-                      iljuData.ilji!.unseong!.description,
-                      "font-extrabold text-amber-900"
-                    )}
-                  </p>
+                <div className="bg-gradient-to-r from-amber-100/50 to-white p-5 rounded-xl border border-amber-300">
+                  {(() => {
+                    const base = unseongDescriptions[iljiUnseong];
+
+                    // unseongDescriptions에서 가져오기
+                    const title = base?.title ?? iljiUnseong;
+                    const keywords = base?.keywords ?? [];
+                    const description = base?.description ?? "";
+
+                    // 데이터가 없는 경우
+                    if (!base || !description) {
+                      return (
+                        <div className="text-center py-8">
+                          <p className="text-gray-600 mb-2">
+                            아직 <strong className="text-amber-900">{iljiUnseong}</strong>의 일반 해설이 준비되지 않았습니다.
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            unseongDescriptions.ts에 "{iljiUnseong}" 항목을 확인해주세요.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <h5 className="font-bold text-amber-900 mb-3 flex items-center gap-2 text-lg">
+                          <span>📘</span> {title}
+                        </h5>
+
+                        {keywords.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {keywords.map((k) => (
+                              <span
+                                key={k}
+                                className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200 text-xs md:text-sm font-semibold"
+                              >
+                                {k}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="text-base md:text-lg font-normal leading-relaxed text-gray-800 whitespace-pre-line word-keep-all bg-white/70 p-4 rounded-lg">
+                          {renderBoldMarkdown(
+                            description,
+                            "font-extrabold text-amber-900"
+                          )}
+                        </p>
+
+                        {/* 일지 운성 추가 설명 (일지 전용) */}
+                        {base?.일지 && (
+                          <div className="mt-4 bg-amber-50 p-4 rounded-lg border border-amber-200">
+                            <h6 className="font-bold text-amber-900 mb-2 flex items-center gap-2">
+                              <span>💑</span> {base.일지.title}
+                            </h6>
+                            <p className="text-base leading-relaxed text-gray-800 whitespace-pre-line word-keep-all">
+                              {renderBoldMarkdown(
+                                base.일지.description,
+                                "font-extrabold text-amber-900"
+                              )}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 일주별 십이운성 특별 해설 버튼: 일반 해설 박스 안에 표시 */}
+                        {iljuData?.ilji?.unseong?.description && !showIljiUnseongSpecial && (
+                          <div className="mt-5 text-center">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-extrabold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                              onClick={() => setShowIljiUnseongSpecial(true)}
+                            >
+                              <span>✨</span>
+                              <span>{iljuGanji}의 {iljiUnseong} 특별 해설 보기</span>
+                              <ChevronDownIcon className="w-5 h-5" />
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
+
+                {/* 일주별 십이운성 특별 해설 내용 */}
+                {iljuData?.ilji?.unseong?.description && showIljiUnseongSpecial && (
+                  <div className="mt-5 bg-white/80 p-5 rounded-xl border-2 border-amber-200 shadow-sm">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="inline-block px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-sm font-semibold">
+                        일주 십이운성 특별 해설
+                      </div>
+                      <button
+                        type="button"
+                        className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-sm"
+                        onClick={() => setShowIljiUnseongSpecial(false)}
+                      >
+                        닫기
+                      </button>
+                    </div>
+
+                    <h6 className="text-lg md:text-xl font-extrabold text-amber-900 mb-3">
+                      {iljuData.ilji.unseong.title ?? `${iljuGanji}의 ${iljiUnseong}`}
+                    </h6>
+
+                    {iljuData.ilji.unseong.keywords && iljuData.ilji.unseong.keywords.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {iljuData.ilji.unseong.keywords.map((k: string) => (
+                          <span
+                            key={k}
+                            className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200 text-xs md:text-sm font-semibold"
+                          >
+                            {k}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="bg-white/70 p-4 rounded-lg">
+                      <p className="text-base md:text-lg font-normal leading-relaxed text-gray-800 whitespace-pre-line word-keep-all">
+                        {renderBoldMarkdown(
+                          iljuData.ilji.unseong.description,
+                          "font-extrabold text-amber-900"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
