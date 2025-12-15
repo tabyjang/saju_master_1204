@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>격국 판단 시스템 테스트</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        #output {
+            background: #252526;
+            padding: 20px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 격국 판단 시스템 테스트</h1>
+        <button onclick="runTests()">테스트 실행</button>
+        <button onclick="clearOutput()">출력 지우기</button>
+        <div id="output"></div>
+    </div>
+
+    <script type="module">
+        // Vite 개발 서버에서 실행할 때는 이 파일을 직접 열 수 없으므로
+        // 대신 브라우저 콘솔에서 실행하도록 안내
+        window.runTests = async function() {
+            const output = document.getElementById('output');
+            output.textContent = '테스트를 실행하려면:\n\n';
+            output.textContent += '1. Vite 개발 서버 실행: npm run dev\n';
+            output.textContent += '2. 브라우저 콘솔 열기 (F12)\n';
+            output.textContent += '3. 다음 코드 실행:\n\n';
+            output.textContent += 'import { runAllTests } from "./utils/geokguk.test.ts";\n';
+            output.textContent += 'runAllTests();\n\n';
+            output.textContent += '또는 ts-node를 사용:\n';
+            output.textContent += 'npm install -D ts-node\n';
+            output.textContent += 'npx ts-node utils/geokguk.test.ts\n';
+        };
+
+        window.clearOutput = function() {
+            document.getElementById('output').textContent = '';
+        };
+
+        // 페이지 로드 시 안내 메시지
+        window.runTests();
+    </script>
+</body>
+</html>
+
