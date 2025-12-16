@@ -24,6 +24,7 @@ import { InteractionsDisplay } from "./InteractionsDisplay";
 import { SinsalDisplay } from "./SinsalDisplay";
 import { GyeokgukDisplay } from "./GyeokgukDisplay";
 import { MonthlyIljuCalendar } from "./MonthlyIljuCalendar";
+import OhaengForceDisplay from "./OhaengForceDisplay";
 import {
   DiagnosisIcon,
   PrescriptionIcon,
@@ -2714,6 +2715,9 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({
 
         {/* 오행의 기운 섹션 */}
         <OhaengEnergyDisplay ilganChar={ilganChar} sajuInfo={sajuData} />
+
+        {/* 오행 세력 분석 (가중치 적용) */}
+        <OhaengForceDisplay sajuInfo={sajuData} />
 
         {/* 일간 성격 확인 섹션 */}
         <IlganPersonalityDisplay ilganChar={ilganChar} />
