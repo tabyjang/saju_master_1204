@@ -1,9 +1,10 @@
 /**
  * ============================================
- * 용신(用神) 알고리즘 - Phase 1
+ * 용신(用神) 알고리즘 - Phase 1 & 2
  * ============================================
  * 
- * 오행 세력표 계산 및 상호작용 분석
+ * Phase 1: 오행 세력표 계산 및 상호작용 분석
+ * Phase 2: 신강/신약 판정
  */
 
 // 타입 Export
@@ -41,13 +42,33 @@ export {
   formatInteractionResult,
 } from './interactions';
 
+// 신강/신약 판정 (Phase 2)
+export {
+  getSibsinCategory,
+  isSupport,
+  isOppose,
+  checkDeukryeong,
+  checkDeukryeongDetail,
+  checkDeukji,
+  isStrongUnseong,
+  checkDeukjiDetail,
+  calculateDeukse,
+  calculateTonggeun,
+  calculateStrengthIndex,
+  determineStrengthLevel,
+  getStrengthLevelName,
+  analyzeStrength,
+  formatStrengthResult,
+} from './strengthCalculator';
+
 // ============================================
 // Phase 1 통합 함수
 // ============================================
 
-import type { SajuInput, Phase1Result, OhaengScores } from './types';
+import type { SajuInput, Phase1Result, StrengthResult, OhaengScores } from './types';
 import { calculateForceMatrix, addScores } from './forceCalculator';
 import { analyzeInteractions } from './interactions';
+import { analyzeStrength, formatStrengthResult } from './strengthCalculator';
 
 /**
  * Phase 1 전체 분석 실행
@@ -160,6 +181,74 @@ export function formatPhase1Result(result: Phase1Result): string {
   lines.push(`│ 금(金): ${adj.metal.toFixed(2).padStart(6)} (${((adj.metal/adjTotal)*100).toFixed(1).padStart(5)}%)          │`);
   lines.push(`│ 수(水): ${adj.water.toFixed(2).padStart(6)} (${((adj.water/adjTotal)*100).toFixed(1).padStart(5)}%)          │`);
   lines.push('└──────────────────────────────────────────┘');
+  
+  return lines.join('\n');
+}
+
+// ============================================
+// Phase 2 통합 함수
+// ============================================
+
+/**
+ * Phase 2 전체 결과 타입
+ */
+export interface Phase2Result {
+  /** Phase 1 분석 결과 */
+  phase1: Phase1Result;
+  
+  /** 신강/신약 판정 결과 */
+  strength: StrengthResult;
+  
+  /** 분석 로그 */
+  logs: string[];
+}
+
+/**
+ * Phase 1 + 2 통합 분석 실행
+ * 
+ * 1. Phase 1: 오행 세력표 계산
+ * 2. Phase 2: 신강/신약 판정
+ * 
+ * @param input 사주 입력 데이터
+ * @param saryeongChar 월령 사령 글자 (선택)
+ * @returns Phase 1 + 2 분석 결과
+ */
+export function analyzePhase2(
+  input: SajuInput,
+  saryeongChar?: string
+): Phase2Result {
+  const logs: string[] = [];
+  
+  // Phase 1 실행
+  logs.push('=== Phase 1: 오행 세력표 계산 ===');
+  const phase1Result = analyzePhase1(input, saryeongChar);
+  logs.push(...phase1Result.logs);
+  
+  // Phase 2 실행
+  logs.push('');
+  logs.push('=== Phase 2: 신강/신약 판정 ===');
+  const strengthResult = analyzeStrength(input, phase1Result.adjustedScores);
+  logs.push(strengthResult.description);
+  
+  return {
+    phase1: phase1Result,
+    strength: strengthResult,
+    logs,
+  };
+}
+
+/**
+ * Phase 2 결과 출력 (Phase 1 포함)
+ */
+export function formatPhase2Result(result: Phase2Result): string {
+  const lines: string[] = [];
+  
+  // Phase 1 결과
+  lines.push(formatPhase1Result(result.phase1));
+  lines.push('');
+  
+  // Phase 2 결과
+  lines.push(formatStrengthResult(result.strength));
   
   return lines.join('\n');
 }
